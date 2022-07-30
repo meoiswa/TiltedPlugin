@@ -2,7 +2,7 @@
   "Author": "Meoiswa",
   "Name": "Tilted",
   "Punchline": "Tilt the camera, not yourself.",
-  "Description": "Automatically adjust Camera Tilt on certain conditions",
+  "Description": "Automatically adjusts the Third Person Camera Angle given certain conditions.",
   "InternalName": "Tilted",
   "ApplicableVersion": "any",
   "Tags": [
