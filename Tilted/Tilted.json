@@ -1,0 +1,14 @@
+{
+  "Author": "Meoiswa",
+  "Name": "Tilted",
+  "Punchline": "Tilt the camera, not yourself.",
+  "Description": "Automatically adjust Camera Tilt on certain conditions",
+  "InternalName": "Tilted",
+  "ApplicableVersion": "any",
+  "Tags": [
+    "UI",
+    "tweak",
+    "camera",
+    "combat"
+  ]
+}
