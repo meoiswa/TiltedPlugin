@@ -49,7 +49,7 @@ namespace Tilted
                 return;
             }
 
-            ImGui.SetNextWindowSize(new Vector2(320, 260), ImGuiCond.Always);
+            ImGui.SetNextWindowSize(new Vector2(320, 290), ImGuiCond.Always);
             if (ImGui.Begin("Tilted Settings", ref visible,
                 ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse))
             {
