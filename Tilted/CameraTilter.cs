@@ -3,18 +3,22 @@ using Dalamud.Game;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Logging;
 using FFXIVClientStructs.FFXIV.Client.Game;
+using FFXIVClientStructs.FFXIV.Client.Game.Control;
+using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 
 namespace Tilted
 {
   public unsafe class CameraTilter
   {
-    public Configuration configuration;
+    private readonly TiltedPlugin plugin;
+    private readonly GameMain* gameMain;
+    private readonly CameraManager* cameraManager;
 
-    public GameMain* gameMain;
+    private readonly ConfigModule* configModule;
+    private readonly UIState* uiState;
 
-    public ConfigModule* configModule;
-
+    private bool InCombat = false;
     private bool BoundByDuty = false;
     private bool BoundByDutyPending = false;
     private bool IsEnabled = false;
@@ -22,45 +26,69 @@ namespace Tilted
     private float CurrentTilt = 0;
     private float TimeoutTime = 0;
 
+    private bool Unsheathed = false;
+
+
     public static float InOutSine(float t) => (float)(Math.Cos(t * Math.PI) - 1) / -2;
 
-    public CameraTilter(Configuration configuration)
+    public CameraTilter(TiltedPlugin plugin)
     {
-      this.configuration = configuration;
-      this.gameMain = GameMain.Instance();
-      this.configModule = ConfigModule.Instance();
+      this.plugin = plugin;
+      gameMain = GameMain.Instance();
+      cameraManager = CameraManager.Instance;
+      configModule = ConfigModule.Instance();
+      uiState = UIState.Instance();
 
       CurrentTilt = configModule->GetIntValue(ConfigOption.TiltOffset);
     }
 
     public void OnUpdate(Framework framework)
     {
-      if (configuration.Enabled)
+      if (plugin.Configuration.Enabled)
       {
-        var TargetTilt = CurrentTilt;
-        if (IsEnabled)
+        if (Unsheathed != Convert.ToBoolean(uiState->WeaponState.WeaponUnsheathed))
         {
-          TargetTilt = configuration.EnabledCameraTilt;
+          Unsheathed = !Unsheathed;
+          if (plugin.Configuration.DebugMessages)
+          {
+            plugin.ChatGui.Print($"Tilted: Unsheathed: {Unsheathed}");
+          }
+
+          ValidateCurrentState();
+        }
+
+        var TargetTilt = CurrentTilt;
+
+        if (IsEnabled || plugin.Configuration.DebugForceEnabled)
+        {
+          if (plugin.Configuration.TweakCameraTilt)
+          {
+            TargetTilt = plugin.Configuration.EnabledCameraTilt;
+          }
         }
         else
         {
-          TargetTilt = configuration.DisabledCameraTilt;
+          if (plugin.Configuration.TweakCameraTilt)
+          {
+            TargetTilt = plugin.Configuration.DisabledCameraTilt;
+          }
         }
 
-        if (configuration.SmoothingInCombat || (configuration.SmoothingInInstance && BoundByDuty))
+        if (TimeoutTime > 0)
         {
-          if (TimeoutTime > 0) {
-            TimeoutTime -= framework.UpdateDelta.Milliseconds / 1000f;
-            return;
-          }
+          TimeoutTime -= framework.UpdateDelta.Milliseconds / 1000f;
+          return;
+        }
 
+        if (plugin.Configuration.SmoothingTilt)
+        {
           if (CurrentTilt > TargetTilt)
           {
-            CurrentTilt = Math.Clamp(CurrentTilt - 0.05f * framework.UpdateDelta.Milliseconds, TargetTilt, 100);
+            CurrentTilt = Math.Clamp(CurrentTilt - 0.05f * framework.UpdateDelta.Milliseconds, TargetTilt, 100f);
           }
           else if (CurrentTilt < TargetTilt)
           {
-            CurrentTilt = Math.Clamp(CurrentTilt + 0.05f * framework.UpdateDelta.Milliseconds, 0, TargetTilt);
+            CurrentTilt = Math.Clamp(CurrentTilt + 0.05f * framework.UpdateDelta.Milliseconds, 0f, TargetTilt);
           }
           else
           {
@@ -85,67 +113,140 @@ namespace Tilted
 
     public void OnConditionChange(ConditionFlag flag, bool value)
     {
-      if (!configuration.Enabled)
+      if (flag == ConditionFlag.BoundByDuty)
       {
-        return;
+        BoundByDuty = value;
+        BoundByDutyPending = true;
+
+        if (plugin.Configuration.DebugMessages)
+        {
+          plugin.ChatGui.Print($"Tilted: BoundByDuty: {BoundByDuty}. BoundByDutyPending: {BoundByDutyPending}");
+        }
+        ValidateCurrentState();
+      }
+      if (flag == ConditionFlag.BetweenAreas && !value)
+      {
+        if (BoundByDutyPending && !BoundByDuty)
+        {
+          BoundByDutyPending = false;
+        }
+
+        if (plugin.Configuration.DebugMessages)
+        {
+          plugin.ChatGui.Print($"Tilted: BetweenAreas. BoundByDutyPending: {BoundByDutyPending}");
+        }
+        ValidateCurrentState();
+      }
+      if (flag == ConditionFlag.OccupiedInCutSceneEvent && !value)
+      {
+        if (BoundByDutyPending && BoundByDuty)
+        {
+          BoundByDutyPending = false;
+        }
+
+        if (plugin.Configuration.DebugMessages)
+        {
+          plugin.ChatGui.Print($"Tilted: OccupiedInCutSceneEvent. BoundByDutyPending: {BoundByDutyPending}");
+        }
+        ValidateCurrentState();
       }
 
-      if (configuration.EnabledInInstance)
+      if (flag == ConditionFlag.InCombat)
       {
-        if (flag == ConditionFlag.BoundByDuty)
+        if (value)
         {
-          BoundByDuty = value;
-          BoundByDutyPending = true;
+          TimeoutTime = 0;
+          InCombat = true;
         }
-        if (flag == ConditionFlag.BetweenAreas && !value)
+        else
         {
-          if (BoundByDutyPending && !BoundByDuty)
+          TimeoutTime = plugin.Configuration.CombatTimeoutSeconds;
+          InCombat = false;
+        }
+
+        if (plugin.Configuration.DebugMessages)
+        {
+          plugin.ChatGui.Print($"Tilted: InCombat: {InCombat}. TimeoutTime: {TimeoutTime}");
+        }
+        ValidateCurrentState();
+      }
+    }
+
+    public void TweakCameraDistance()
+    {
+      if (plugin.Configuration.Enabled)
+      {
+        if (IsEnabled || plugin.Configuration.DebugForceEnabled)
+        {
+          if (plugin.Configuration.TweakCameraDistance)
           {
-            DisableAdjust();
-            BoundByDutyPending = false;
+            cameraManager->GetActiveCamera()->Distance = plugin.Configuration.EnabledCameraDistance;
           }
         }
-        if (flag == ConditionFlag.OccupiedInCutSceneEvent && !value)
+        else
         {
-          if (BoundByDutyPending && BoundByDuty)
+          if (plugin.Configuration.TweakCameraDistance)
           {
-            EnableAdjust();
-            BoundByDutyPending = false;
+            cameraManager->GetActiveCamera()->Distance = plugin.Configuration.DisabledCameraDistance;
           }
         }
       }
+    }
 
-      if (configuration.EnabledInCombat)
+    public void ValidateCurrentState()
+    {
+      var lastEnabled = IsEnabled;
+
+      if (plugin.Configuration.DebugForceEnabled)
       {
-        if (flag == ConditionFlag.InCombat)
+        IsEnabled = true;
+      }
+      else
+      {
+        if (plugin.Configuration.EnabledInDuty)
         {
-          if (BoundByDuty && configuration.EnabledInInstance)
+          if (!BoundByDutyPending)
           {
-            return;
+            if (BoundByDuty)
+            {
+              IsEnabled = true;
+            }
+            else
+            {
+              IsEnabled = false;
+            }
           }
-
-          if (value)
+        }
+        else
+        {
+          if (plugin.Configuration.EnabledInCombat && InCombat)
           {
-            TimeoutTime = 0;
-            EnableAdjust();
+            IsEnabled = true;
+          }
+          else if (plugin.Configuration.EnabledUnsheathed && Unsheathed)
+          {
+            IsEnabled = true;
+          }
+          else if (plugin.Configuration.EnabledInCombat && !InCombat && TimeoutTime <= 0)
+          {
+            IsEnabled = false;
           }
           else
           {
-            TimeoutTime = configuration.CombatTimeoutSeconds;
-            DisableAdjust();
+            IsEnabled = false;
           }
         }
       }
-    }
 
-    public void EnableAdjust()
-    {
-      IsEnabled = true;
-    }
+      if (lastEnabled != IsEnabled)
+      {
+        TweakCameraDistance();
+      }
 
-    public void DisableAdjust()
-    {
-      IsEnabled = false;
+      if (plugin.Configuration.DebugMessages)
+      {
+        plugin.ChatGui.Print($"Tilted: Current State: {IsEnabled}");
+      }
     }
   }
 }

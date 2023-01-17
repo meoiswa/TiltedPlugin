@@ -1,8 +1,9 @@
 ﻿using Dalamud.Game.Command;
+using Dalamud.Game.Gui;
+using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
+using Dalamud.Logging;
 using Dalamud.Plugin;
-using System.IO;
-using System.Reflection;
 
 namespace Tilted
 {
@@ -12,31 +13,34 @@ namespace Tilted
 
     private const string commandName = "/tilted";
 
-    private DalamudPluginInterface PluginInterface { get; init; }
-    private CommandManager CommandManager { get; init; }
-    private Configuration Configuration { get; init; }
-    private PluginUI PluginUi { get; init; }
-
-    private CameraTilter CameraTilter { get; init; }
+    public DalamudPluginInterface PluginInterface { get; init; }
+    public CommandManager CommandManager { get; init; }
+    public ChatGui ChatGui { get; init; }
+    public Configuration Configuration { get; init; }
+    public WindowSystem WindowSystem { get; init; }
+    public CameraTilter CameraTilter { get; init; }
 
     public TiltedPlugin(
         [RequiredVersion("1.0")] DalamudPluginInterface pluginInterface,
-        [RequiredVersion("1.0")] CommandManager commandManager)
+        [RequiredVersion("1.0")] CommandManager commandManager,
+        [RequiredVersion("1.0")] ChatGui chatGui)
     {
       pluginInterface.Create<Service>();
 
       PluginInterface = pluginInterface;
       CommandManager = commandManager;
+      ChatGui = chatGui;
+      WindowSystem = new("TiltedPlugin");
 
       Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
       Configuration.Initialize(PluginInterface);
 
-      PluginUi = new PluginUI(Configuration);
-
-      CameraTilter = new CameraTilter(Configuration);
+      CameraTilter = new CameraTilter(this);
       Service.Condition.ConditionChange += CameraTilter.OnConditionChange;
-
       Service.Framework.Update += CameraTilter.OnUpdate;
+
+      WindowSystem.AddWindow(new TiltedUI(this));
+      WindowSystem.GetWindow("Tilted##ConfigWindow")!.IsOpen = Configuration.IsVisible;
 
       CommandManager.AddHandler(commandName, new CommandInfo(OnCommand)
       {
@@ -55,25 +59,32 @@ namespace Tilted
       Service.Condition.ConditionChange -= CameraTilter.OnConditionChange;
       Service.Framework.Update -= CameraTilter.OnUpdate;
 
-      PluginUi.Dispose();
+      WindowSystem.RemoveAllWindows();
 
       CommandManager.RemoveHandler(commandName);
     }
 
+    private void SetVisible(bool isVisible)
+    {
+      Configuration.IsVisible = isVisible;
+      Configuration.Save();
+
+      WindowSystem.GetWindow("Tilted##ConfigWindow")!.IsOpen = Configuration.IsVisible;
+    }
+
     private void OnCommand(string command, string args)
     {
-      // in response to the slash command, just display our main ui
-      PluginUi.Visible = true;
+      SetVisible(!Configuration.IsVisible);
     }
 
     private void DrawUI()
     {
-      PluginUi.Draw();
+      WindowSystem.Draw();
     }
 
     private void DrawConfigUI()
     {
-      PluginUi.Visible = true;
+      SetVisible(!Configuration.IsVisible);
     }
   }
 }
