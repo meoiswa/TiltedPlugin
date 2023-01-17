@@ -210,31 +210,26 @@ namespace Tilted
             if (BoundByDuty)
             {
               IsEnabled = true;
-            }
-            else
-            {
-              IsEnabled = false;
+              return;
             }
           }
         }
+
+        if (plugin.Configuration.EnabledInCombat && InCombat)
+        {
+          IsEnabled = true;
+        }
+        else if (plugin.Configuration.EnabledUnsheathed && Unsheathed)
+        {
+          IsEnabled = true;
+        }
+        else if (plugin.Configuration.EnabledInCombat && !InCombat && TimeoutTime <= 0)
+        {
+          IsEnabled = false;
+        }
         else
         {
-          if (plugin.Configuration.EnabledInCombat && InCombat)
-          {
-            IsEnabled = true;
-          }
-          else if (plugin.Configuration.EnabledUnsheathed && Unsheathed)
-          {
-            IsEnabled = true;
-          }
-          else if (plugin.Configuration.EnabledInCombat && !InCombat && TimeoutTime <= 0)
-          {
-            IsEnabled = false;
-          }
-          else
-          {
-            IsEnabled = false;
-          }
+          IsEnabled = false;
         }
       }
 
