@@ -113,6 +113,20 @@ namespace Tilted
           ImGui.Unindent();
         }
 
+        if (ImGui.CollapsingHeader("Mounted"))
+        {
+          ImGui.Indent();
+          ImGui.TextWrapped("Enables when entering riding a Mount.\nDisables when dismounting.");
+          var enabledWhileMounted = plugin.Configuration.EnabledWhileMounted;
+          if (ImGui.Checkbox("Trigger##EnabledWhileMounted", ref enabledWhileMounted))
+          {
+            plugin.Configuration.EnabledWhileMounted = enabledWhileMounted;
+            plugin.Configuration.Save();
+            plugin.CameraTilter.ValidateCurrentState();
+          }
+          ImGui.Unindent();
+        }
+
         ImGui.Unindent();
       }
 

@@ -64,6 +64,14 @@ namespace Tilted
       CommandManager.RemoveHandler(commandName);
     }
 
+    public void PrintDebug(string message)
+    {
+      if (Configuration.DebugMessages)
+      {
+        ChatGui.Print(message);
+      }
+    }
+
     private void SetVisible(bool isVisible)
     {
       Configuration.IsVisible = isVisible;

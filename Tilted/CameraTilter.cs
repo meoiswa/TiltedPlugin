@@ -18,6 +18,7 @@ namespace Tilted
     private readonly ConfigModule* configModule;
     private readonly UIState* uiState;
 
+    private bool IsMounted = false;
     private bool InCombat = false;
     private bool BoundByDuty = false;
     private bool BoundByDutyPending = false;
@@ -46,13 +47,11 @@ namespace Tilted
     {
       if (plugin.Configuration.Enabled)
       {
-        if (Unsheathed != Convert.ToBoolean(uiState->WeaponState.WeaponUnsheathed))
+        if (Unsheathed != Convert.ToBoolean(uiState->WeaponState.IsUnsheathed))
         {
           Unsheathed = !Unsheathed;
-          if (plugin.Configuration.DebugMessages)
-          {
-            plugin.ChatGui.Print($"Tilted: Unsheathed: {Unsheathed}");
-          }
+
+          plugin.PrintDebug($"Tilted: Unsheathed: {Unsheathed}");
 
           ValidateCurrentState();
         }
@@ -118,10 +117,8 @@ namespace Tilted
         BoundByDuty = value;
         BoundByDutyPending = true;
 
-        if (plugin.Configuration.DebugMessages)
-        {
-          plugin.ChatGui.Print($"Tilted: BoundByDuty: {BoundByDuty}. BoundByDutyPending: {BoundByDutyPending}");
-        }
+        plugin.PrintDebug($"Tilted: BoundByDuty: {BoundByDuty}. BoundByDutyPending: {BoundByDutyPending}");
+
         ValidateCurrentState();
       }
       if (flag == ConditionFlag.BetweenAreas && !value)
@@ -131,10 +128,8 @@ namespace Tilted
           BoundByDutyPending = false;
         }
 
-        if (plugin.Configuration.DebugMessages)
-        {
-          plugin.ChatGui.Print($"Tilted: BetweenAreas. BoundByDutyPending: {BoundByDutyPending}");
-        }
+        plugin.PrintDebug($"Tilted: BetweenAreas. BoundByDutyPending: {BoundByDutyPending}");
+
         ValidateCurrentState();
       }
       if (flag == ConditionFlag.OccupiedInCutSceneEvent && !value)
@@ -144,10 +139,24 @@ namespace Tilted
           BoundByDutyPending = false;
         }
 
-        if (plugin.Configuration.DebugMessages)
+        plugin.PrintDebug($"Tilted: OccupiedInCutSceneEvent. BoundByDutyPending: {BoundByDutyPending}");
+
+        ValidateCurrentState();
+      }
+
+      if (flag == ConditionFlag.Mounted)
+      {
+        if (value)
         {
-          plugin.ChatGui.Print($"Tilted: OccupiedInCutSceneEvent. BoundByDutyPending: {BoundByDutyPending}");
+          IsMounted = true;
         }
+        else
+        {
+          IsMounted = false;
+        }
+
+        plugin.PrintDebug($"Tilted: Mounted: {IsMounted}.");
+
         ValidateCurrentState();
       }
 
@@ -164,10 +173,8 @@ namespace Tilted
           InCombat = false;
         }
 
-        if (plugin.Configuration.DebugMessages)
-        {
-          plugin.ChatGui.Print($"Tilted: InCombat: {InCombat}. TimeoutTime: {TimeoutTime}");
-        }
+        plugin.PrintDebug($"Tilted: InCombat: {InCombat}. TimeoutTime: {TimeoutTime}");
+
         ValidateCurrentState();
       }
     }
@@ -199,6 +206,7 @@ namespace Tilted
 
       if (plugin.Configuration.DebugForceEnabled)
       {
+        plugin.PrintDebug($"Tilted: DebugForceEnabled={plugin.Configuration.DebugForceEnabled}");
         IsEnabled = true;
       }
       else
@@ -209,18 +217,26 @@ namespace Tilted
           {
             if (BoundByDuty)
             {
+              plugin.PrintDebug($"Tilted: EnabledInDuty={plugin.Configuration.EnabledInDuty} && BoundByDuty={BoundByDuty}");
               IsEnabled = true;
               return;
             }
           }
         }
 
-        if (plugin.Configuration.EnabledInCombat && InCombat)
+        if (plugin.Configuration.EnabledWhileMounted && IsMounted)
         {
+          plugin.PrintDebug($"Tilted: EnabledWhileMounted={plugin.Configuration.EnabledWhileMounted} && IsMounted={IsMounted}");
+          IsEnabled = true;
+        }
+        else if (plugin.Configuration.EnabledInCombat && InCombat)
+        {
+          plugin.PrintDebug($"Tilted: EnabledInCombat={plugin.Configuration.EnabledInCombat} && InCombat={InCombat}");
           IsEnabled = true;
         }
         else if (plugin.Configuration.EnabledUnsheathed && Unsheathed)
         {
+          plugin.PrintDebug($"Tilted: EnabledUnsheathed={plugin.Configuration.EnabledUnsheathed} && Unsheathed={Unsheathed}");
           IsEnabled = true;
         }
         else if (plugin.Configuration.EnabledInCombat && !InCombat && TimeoutTime <= 0)
@@ -238,10 +254,9 @@ namespace Tilted
         TweakCameraDistance();
       }
 
-      if (plugin.Configuration.DebugMessages)
-      {
-        plugin.ChatGui.Print($"Tilted: Current State: {IsEnabled}");
-      }
+
+      plugin.PrintDebug($"Tilted: Current State: {IsEnabled}");
+
     }
   }
 }
