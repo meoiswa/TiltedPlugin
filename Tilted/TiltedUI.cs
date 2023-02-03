@@ -116,7 +116,7 @@ namespace Tilted
         if (ImGui.CollapsingHeader("Mounted"))
         {
           ImGui.Indent();
-          ImGui.TextWrapped("Enables when entering riding a Mount.\nDisables when dismounting.");
+          ImGui.TextWrapped("Enables when riding a Mount.\nDisables when dismounting.");
           var enabledWhileMounted = plugin.Configuration.EnabledWhileMounted;
           if (ImGui.Checkbox("Trigger##EnabledWhileMounted", ref enabledWhileMounted))
           {
