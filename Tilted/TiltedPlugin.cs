@@ -19,6 +19,7 @@ namespace Tilted
     public Configuration Configuration { get; init; }
     public WindowSystem WindowSystem { get; init; }
     public CameraTilter CameraTilter { get; init; }
+    public TiltedUI Window { get; init; }
 
     public TiltedPlugin(
         [RequiredVersion("1.0")] DalamudPluginInterface pluginInterface,
@@ -39,8 +40,12 @@ namespace Tilted
       Service.Condition.ConditionChange += CameraTilter.OnConditionChange;
       Service.Framework.Update += CameraTilter.OnUpdate;
 
-      WindowSystem.AddWindow(new TiltedUI(this));
-      WindowSystem.GetWindow("Tilted##ConfigWindow")!.IsOpen = Configuration.IsVisible;
+      Window = new TiltedUI(this)
+      {
+        IsOpen = Configuration.IsVisible
+      };
+
+      WindowSystem.AddWindow(Window);
 
       CommandManager.AddHandler(commandName, new CommandInfo(OnCommand)
       {
@@ -77,7 +82,7 @@ namespace Tilted
       Configuration.IsVisible = isVisible;
       Configuration.Save();
 
-      WindowSystem.GetWindow("Tilted##ConfigWindow")!.IsOpen = Configuration.IsVisible;
+      Window.IsOpen = Configuration.IsVisible;
     }
 
     private void OnCommand(string command, string args)

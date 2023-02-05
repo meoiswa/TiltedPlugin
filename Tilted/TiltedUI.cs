@@ -10,7 +10,7 @@ namespace Tilted
 {
   // It is good to have this be disposable in general, in case you ever need it
   // to do any cleanup
-  unsafe class TiltedUI : Window, IDisposable
+  public unsafe class TiltedUI : Window, IDisposable
   {
     private readonly TiltedPlugin plugin;
 
@@ -33,6 +33,7 @@ namespace Tilted
 
     public void Dispose()
     {
+      GC.SuppressFinalize(this);
     }
 
     public override void OnClose()
@@ -42,7 +43,7 @@ namespace Tilted
       plugin.Configuration.Save();
     }
 
-    public override void Draw()
+    private void DrawSectionMasterEnable()
     {
       // can't ref a property, so use a local copy
       var enabled = plugin.Configuration.Enabled;
@@ -51,9 +52,10 @@ namespace Tilted
         plugin.Configuration.Enabled = enabled;
         plugin.Configuration.Save();
       }
+    }
 
-      ImGui.Separator();
-
+    private void DrawTriggersSection()
+    {
       if (ImGui.CollapsingHeader("Triggers"))
       {
         ImGui.Indent();
@@ -129,9 +131,10 @@ namespace Tilted
 
         ImGui.Unindent();
       }
+    }
 
-      ImGui.Separator();
-
+    private void DrawTweaksSection()
+    {
       if (ImGui.CollapsingHeader("Tweaks"))
       {
         ImGui.Indent();
@@ -148,7 +151,6 @@ namespace Tilted
             plugin.Configuration.TweakCameraTilt = tiltEnabled;
             plugin.Configuration.Save();
           }
-
 
           var inTilt = plugin.Configuration.EnabledCameraTilt;
           if (ImGui.Button("Set##InTilt"))
@@ -248,15 +250,15 @@ namespace Tilted
 
         ImGui.Unindent();
       }
+    }
 
-      ImGui.Separator();
-
+    public void DrawDebugSection()
+    {
       if (ImGui.CollapsingHeader("Debug Options"))
       {
         ImGui.Indent();
 
         ImGui.TextWrapped("Debug Options\nUse these to test your settings.");
-        var isForceEnabled = plugin.Configuration.DebugForceEnabled;
         if (ImGui.Button("Force Enabled state"))
         {
           plugin.Configuration.DebugForceEnabled = true;
@@ -277,6 +279,23 @@ namespace Tilted
 
         ImGui.Unindent();
       }
+    }
+
+    public override void Draw()
+    {
+      DrawSectionMasterEnable();
+
+      ImGui.Separator();
+
+      DrawTriggersSection();
+
+      ImGui.Separator();
+
+      DrawTweaksSection();
+
+      ImGui.Separator();
+
+      DrawDebugSection();
     }
   }
 }
