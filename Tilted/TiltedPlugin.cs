@@ -1,9 +1,13 @@
-﻿using Dalamud.Game.Command;
+﻿using System.IO;
+using Dalamud.Game.ClientState.Conditions;
+using Dalamud.Game.Command;
 using Dalamud.Game.Gui;
 using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
 using Dalamud.Logging;
 using Dalamud.Plugin;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Tilted
 {
@@ -16,9 +20,10 @@ namespace Tilted
     public DalamudPluginInterface PluginInterface { get; init; }
     public CommandManager CommandManager { get; init; }
     public ChatGui ChatGui { get; init; }
-    public Configuration Configuration { get; init; }
+    public ConfigurationMKII Configuration { get; init; }
     public WindowSystem WindowSystem { get; init; }
     public CameraTilter CameraTilter { get; init; }
+    public Condition Condition { get; init; }
     public TiltedUI Window { get; init; }
 
     public TiltedPlugin(
@@ -33,11 +38,11 @@ namespace Tilted
       ChatGui = chatGui;
       WindowSystem = new("TiltedPlugin");
 
-      Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
-      Configuration.Initialize(PluginInterface);
+      Configuration = LoadConfiguration();
+      Configuration.Initialize(this);
 
       CameraTilter = new CameraTilter(this);
-      Service.Condition.ConditionChange += CameraTilter.OnConditionChange;
+      Condition = Service.Condition;
       Service.Framework.Update += CameraTilter.OnUpdate;
 
       Window = new TiltedUI(this)
@@ -61,7 +66,6 @@ namespace Tilted
       PluginInterface.UiBuilder.Draw -= DrawUI;
       PluginInterface.UiBuilder.OpenConfigUi -= DrawConfigUI;
 
-      Service.Condition.ConditionChange -= CameraTilter.OnConditionChange;
       Service.Framework.Update -= CameraTilter.OnUpdate;
 
       WindowSystem.RemoveAllWindows();
@@ -73,8 +77,38 @@ namespace Tilted
     {
       if (Configuration.DebugMessages)
       {
-        ChatGui.Print(message);
+        ChatGui.Print($"TiltedPlugin: {message}");
       }
+    }
+
+    private ConfigurationMKII LoadConfiguration()
+    {
+      var configJson = File.ReadAllText(PluginInterface.ConfigFile.FullName);
+      var baseConfig = JObject.Parse(configJson);
+
+      if (baseConfig != null) 
+      {
+        if ((int?)baseConfig["Version"] == 0)
+        {
+          var configmki = baseConfig.ToObject<ConfigurationMKI>();
+          if (configmki != null)
+          {
+            return ConfigurationMKII.FromConfigurationMKI(configmki);
+          }
+        }
+        else if ((int?)baseConfig["Version"] == 1)
+        {
+          return baseConfig.ToObject<ConfigurationMKII>() ?? new ConfigurationMKII();
+        }
+      }
+
+      return new ConfigurationMKII();
+    }
+
+    public void SaveConfiguration()
+    {
+      var configJson = JsonConvert.SerializeObject(Configuration, Formatting.Indented);
+      File.WriteAllText(PluginInterface.ConfigFile.FullName, configJson);
     }
 
     private void SetVisible(bool isVisible)

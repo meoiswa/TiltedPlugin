@@ -7,9 +7,9 @@ using System;
 namespace Tilted
 {
   [Serializable]
-  public unsafe class Configuration : IPluginConfiguration
+  public unsafe class ConfigurationMKI : ConfigurationBase
   {
-    public int Version { get; set; } = 0;
+    public override int Version { get; set; } = 0;
 
     public bool IsVisible { get; set; } = true;
 
@@ -35,14 +35,5 @@ namespace Tilted
 
     public bool DebugForceEnabled = false;
     public bool DebugMessages = false;
-
-    // the below exist just to make saving less cumbersome
-    [NonSerialized]
-    private DalamudPluginInterface? pluginInterface;
-    public void Initialize(DalamudPluginInterface pluginInterface) => this.pluginInterface = pluginInterface;
-    public void Save()
-    {
-      pluginInterface!.SavePluginConfig(this);
-    }
   }
 }

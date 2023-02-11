@@ -18,17 +18,14 @@ namespace Tilted
     private readonly ConfigModule* configModule;
     private readonly UIState* uiState;
 
-    private bool IsMounted = false;
-    private bool InCombat = false;
-    private bool BoundByDuty = false;
-    private bool BoundByDutyPending = false;
+    private bool IsMounted => plugin.Condition[ConditionFlag.Mounted];
+    private bool InCombat => plugin.Condition[ConditionFlag.InCombat];
+    private bool BoundByDuty => plugin.Condition[ConditionFlag.BoundByDuty] && !plugin.Condition[ConditionFlag.BetweenAreas] && !plugin.Condition[ConditionFlag.OccupiedInCutSceneEvent];
+    private bool Unsheathed => uiState->WeaponState.IsUnsheathed;
     private bool IsEnabled = false;
 
     private float CurrentTilt = 0;
     private float TimeoutTime = 0;
-
-    private bool Unsheathed = false;
-
 
     public static float InOutSine(float t) => (float)(Math.Cos(t * Math.PI) - 1) / -2;
 
@@ -45,218 +42,147 @@ namespace Tilted
 
     public void OnUpdate(Framework framework)
     {
-      if (plugin.Configuration.Enabled)
+      if (plugin.Configuration.MasterEnable)
       {
-        if (Unsheathed != Convert.ToBoolean(uiState->WeaponState.IsUnsheathed))
+        if (EvaluateTriggersAndSetIsEnabled())
         {
-          Unsheathed = !Unsheathed;
-
-          plugin.PrintDebug($"Tilted: Unsheathed: {Unsheathed}");
-
-          ValidateCurrentState();
-        }
-
-        var TargetTilt = CurrentTilt;
-
-        if (IsEnabled || plugin.Configuration.DebugForceEnabled)
-        {
-          if (plugin.Configuration.TweakCameraTilt)
+          if (plugin.Configuration.EnableCameraDistanceTweaking)
           {
-            TargetTilt = plugin.Configuration.EnabledCameraTilt;
-          }
-        }
-        else
-        {
-          if (plugin.Configuration.TweakCameraTilt)
-          {
-            TargetTilt = plugin.Configuration.DisabledCameraTilt;
+            TweakCameraDistance();
           }
         }
 
-        if (TimeoutTime > 0)
+        UpdateCombatTimeoutTimer(framework);
+
+        if (plugin.Configuration.EnableTweakingCameraTilt)
         {
-          TimeoutTime -= framework.UpdateDelta.Milliseconds / 1000f;
-          return;
-        }
-
-        if (plugin.Configuration.SmoothingTilt)
-        {
-          if (CurrentTilt > TargetTilt)
-          {
-            CurrentTilt = Math.Clamp(CurrentTilt - 0.05f * framework.UpdateDelta.Milliseconds, TargetTilt, 100f);
-          }
-          else if (CurrentTilt < TargetTilt)
-          {
-            CurrentTilt = Math.Clamp(CurrentTilt + 0.05f * framework.UpdateDelta.Milliseconds, 0f, TargetTilt);
-          }
-          else
-          {
-            return;
-          }
-        }
-        else
-        {
-          if (CurrentTilt != TargetTilt)
-          {
-            CurrentTilt = TargetTilt;
-          }
-          else
-          {
-            return;
-          }
-        }
-
-        configModule->SetOption(ConfigOption.TiltOffset, (int)CurrentTilt);
-      }
-    }
-
-    public void OnConditionChange(ConditionFlag flag, bool value)
-    {
-      if (flag == ConditionFlag.BoundByDuty)
-      {
-        BoundByDuty = value;
-        BoundByDutyPending = true;
-
-        plugin.PrintDebug($"Tilted: BoundByDuty: {BoundByDuty}. BoundByDutyPending: {BoundByDutyPending}");
-
-        ValidateCurrentState();
-      }
-      if (flag == ConditionFlag.BetweenAreas && !value)
-      {
-        if (BoundByDutyPending && !BoundByDuty)
-        {
-          BoundByDutyPending = false;
-        }
-
-        plugin.PrintDebug($"Tilted: BetweenAreas. BoundByDutyPending: {BoundByDutyPending}");
-
-        ValidateCurrentState();
-      }
-      if (flag == ConditionFlag.OccupiedInCutSceneEvent && !value)
-      {
-        if (BoundByDutyPending && BoundByDuty)
-        {
-          BoundByDutyPending = false;
-        }
-
-        plugin.PrintDebug($"Tilted: OccupiedInCutSceneEvent. BoundByDutyPending: {BoundByDutyPending}");
-
-        ValidateCurrentState();
-      }
-
-      if (flag == ConditionFlag.Mounted)
-      {
-        if (value)
-        {
-          IsMounted = true;
-        }
-        else
-        {
-          IsMounted = false;
-        }
-
-        plugin.PrintDebug($"Tilted: Mounted: {IsMounted}.");
-
-        ValidateCurrentState();
-      }
-
-      if (flag == ConditionFlag.InCombat)
-      {
-        if (value)
-        {
-          TimeoutTime = 0;
-          InCombat = true;
-        }
-        else
-        {
-          TimeoutTime = plugin.Configuration.CombatTimeoutSeconds;
-          InCombat = false;
-        }
-
-        plugin.PrintDebug($"Tilted: InCombat: {InCombat}. TimeoutTime: {TimeoutTime}");
-
-        ValidateCurrentState();
-      }
-    }
-
-    public void TweakCameraDistance()
-    {
-      if (plugin.Configuration.Enabled)
-      {
-        if (IsEnabled || plugin.Configuration.DebugForceEnabled)
-        {
-          if (plugin.Configuration.TweakCameraDistance)
-          {
-            cameraManager->GetActiveCamera()->Distance = plugin.Configuration.EnabledCameraDistance;
-          }
-        }
-        else
-        {
-          if (plugin.Configuration.TweakCameraDistance)
-          {
-            cameraManager->GetActiveCamera()->Distance = plugin.Configuration.DisabledCameraDistance;
-          }
+          TweakCameraTilt(framework);
         }
       }
     }
 
-    public void ValidateCurrentState()
+    private void UpdateCombatTimeoutTimer(Framework framework)
     {
-      var lastEnabled = IsEnabled;
-
-      if (plugin.Configuration.DebugForceEnabled)
+      if (InCombat)
       {
-        plugin.PrintDebug($"Tilted: DebugForceEnabled={plugin.Configuration.DebugForceEnabled}");
-        IsEnabled = true;
+        TimeoutTime = plugin.Configuration.CombatTimeoutSeconds;
+      }
+      else if (TimeoutTime > 0)
+      {
+        TimeoutTime -= framework.UpdateDelta.Milliseconds / 1000f;
+      }
+    }
+
+    private void TweakCameraTilt(Framework framework)
+    {
+      var TargetTilt = CurrentTilt;
+      if (IsEnabled)
+      {
+        TargetTilt = plugin.Configuration.CameraTiltWhenEnabled;
       }
       else
       {
-        if (plugin.Configuration.EnabledInDuty)
-        {
-          if (!BoundByDutyPending)
-          {
-            if (BoundByDuty)
-            {
-              plugin.PrintDebug($"Tilted: EnabledInDuty={plugin.Configuration.EnabledInDuty} && BoundByDuty={BoundByDuty}");
-              IsEnabled = true;
-              return;
-            }
-          }
-        }
-
-        if (plugin.Configuration.EnabledWhileMounted && IsMounted)
-        {
-          plugin.PrintDebug($"Tilted: EnabledWhileMounted={plugin.Configuration.EnabledWhileMounted} && IsMounted={IsMounted}");
-          IsEnabled = true;
-        }
-        else if (plugin.Configuration.EnabledInCombat && InCombat)
-        {
-          plugin.PrintDebug($"Tilted: EnabledInCombat={plugin.Configuration.EnabledInCombat} && InCombat={InCombat}");
-          IsEnabled = true;
-        }
-        else if (plugin.Configuration.EnabledUnsheathed && Unsheathed)
-        {
-          plugin.PrintDebug($"Tilted: EnabledUnsheathed={plugin.Configuration.EnabledUnsheathed} && Unsheathed={Unsheathed}");
-          IsEnabled = true;
-        }
-        else if (plugin.Configuration.EnabledInCombat && !InCombat && TimeoutTime <= 0)
-        {
-          IsEnabled = false;
-        }
-        else
-        {
-          IsEnabled = false;
-        }
+        TargetTilt = plugin.Configuration.CameraTiltWhenDisabled;
       }
 
-      if (lastEnabled != IsEnabled)
+      if (plugin.Configuration.EnableCameraTiltSmoothing)
       {
-        TweakCameraDistance();
+        if (CurrentTilt > TargetTilt)
+        {
+          CurrentTilt = Math.Clamp(CurrentTilt - 0.05f * framework.UpdateDelta.Milliseconds, TargetTilt, 100f);
+          configModule->SetOption(ConfigOption.TiltOffset, (int)CurrentTilt);
+        }
+        else if (CurrentTilt < TargetTilt)
+        {
+          CurrentTilt = Math.Clamp(CurrentTilt + 0.05f * framework.UpdateDelta.Milliseconds, 0f, TargetTilt);
+          configModule->SetOption(ConfigOption.TiltOffset, (int)CurrentTilt);
+        }
+      }
+      else
+      {
+        if (CurrentTilt != TargetTilt)
+        {
+          CurrentTilt = TargetTilt;
+          configModule->SetOption(ConfigOption.TiltOffset, (int)CurrentTilt);
+        }
+      }
+    }
+
+    private void TweakCameraDistance()
+    {
+      if (IsEnabled)
+      {
+        plugin.PrintDebug($"Tweaking Camera Distance => Enabled Distance: {plugin.Configuration.CameraDistanceWhenEnabled}");
+        cameraManager->GetActiveCamera()->Distance = plugin.Configuration.CameraDistanceWhenEnabled;
+      }
+      else
+      {
+        plugin.PrintDebug($"Tweaking Camera Distance => Disabled Distance: {plugin.Configuration.CameraDistanceWhenDisabled}");
+        cameraManager->GetActiveCamera()->Distance = plugin.Configuration.CameraDistanceWhenDisabled;
+      }
+    }
+
+    private bool EvaluateTriggersAndSetIsEnabled()
+    {
+      var didChange = false;
+
+      if (IsEnabled)
+      {
+        if (
+          !plugin.Configuration.DebugForceEnabled
+          && (!plugin.Configuration.EnableInDuty || !(plugin.Configuration.EnableInDuty && BoundByDuty))
+          && (!plugin.Configuration.EnableUnsheathed || !(plugin.Configuration.EnableUnsheathed && Unsheathed))
+          && (!plugin.Configuration.EnableMounted || !(plugin.Configuration.EnableMounted && IsMounted))
+          && (!plugin.Configuration.EnableInCombat || !(plugin.Configuration.EnableInCombat && InCombat))
+          && (!plugin.Configuration.EnableInCombat || TimeoutTime <= 0)
+        )
+        {
+          plugin.PrintDebug($"Trigger: None => Disabled");
+          IsEnabled = false;
+        }
+
+        if (!IsEnabled)
+        {
+          plugin.PrintDebug($"State changed => Disabled");
+          didChange = true;
+        }
+      }
+      else
+      {
+        if (plugin.Configuration.DebugForceEnabled)
+        {
+          plugin.PrintDebug($"Trigger: Force Enabled => Enabled");
+          IsEnabled = true;
+        }
+        else if (plugin.Configuration.EnableInDuty && BoundByDuty)
+        {
+          plugin.PrintDebug($"Trigger: In Duty => Enabled");
+          IsEnabled = true;
+        }
+        else if (plugin.Configuration.EnableUnsheathed && Unsheathed)
+        {
+          plugin.PrintDebug($"Trigger: Unsheathed => Enabled");
+          IsEnabled = true;
+        }
+        else if (plugin.Configuration.EnableMounted && IsMounted)
+        {
+          plugin.PrintDebug($"Trigger: Is Mounted => Enabled");
+          IsEnabled = true;
+        }
+        else if (plugin.Configuration.EnableInCombat && InCombat)
+        {
+          plugin.PrintDebug($"Trigger: In Combat => Enabled");
+          IsEnabled = true;
+        }
+
+        if (IsEnabled)
+        {
+          plugin.PrintDebug($"State changed => Enabled");
+          didChange = true;
+        }
       }
 
-
-      plugin.PrintDebug($"Tilted: Current State: {IsEnabled}");
-
+      return didChange;
     }
   }
 }
