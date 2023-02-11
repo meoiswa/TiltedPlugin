@@ -83,10 +83,14 @@ namespace Tilted
 
     private ConfigurationMKII LoadConfiguration()
     {
-      var configJson = File.ReadAllText(PluginInterface.ConfigFile.FullName);
-      var baseConfig = JObject.Parse(configJson);
+      JObject? baseConfig = null;
+      if (File.Exists(PluginInterface.ConfigFile.FullName))
+      {
+        var configJson = File.ReadAllText(PluginInterface.ConfigFile.FullName);
+        baseConfig = JObject.Parse(configJson);
+      }
 
-      if (baseConfig != null) 
+      if (baseConfig != null)
       {
         if ((int?)baseConfig["Version"] == 0)
         {
