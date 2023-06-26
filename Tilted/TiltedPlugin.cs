@@ -1,17 +1,14 @@
 ﻿using System.IO;
-using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.Command;
-using Dalamud.Game.Gui;
 using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
-using Dalamud.Logging;
 using Dalamud.Plugin;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace Tilted
 {
-  public sealed class TiltedPlugin : IDalamudPlugin
+    public sealed class TiltedPlugin : IDalamudPlugin
   {
     public string Name => "Tilted";
 
@@ -19,33 +16,28 @@ namespace Tilted
 
     public DalamudPluginInterface PluginInterface { get; init; }
     public CommandManager CommandManager { get; init; }
-    public ChatGui ChatGui { get; init; }
     public ConfigurationMKII Configuration { get; init; }
     public WindowSystem WindowSystem { get; init; }
     public CameraTilter CameraTilter { get; init; }
-    public Condition Condition { get; init; }
     public TiltedUI Window { get; init; }
 
     public TiltedPlugin(
         [RequiredVersion("1.0")] DalamudPluginInterface pluginInterface,
-        [RequiredVersion("1.0")] CommandManager commandManager,
-        [RequiredVersion("1.0")] ChatGui chatGui)
+        [RequiredVersion("1.0")] CommandManager commandManager)
     {
       pluginInterface.Create<Service>();
 
       PluginInterface = pluginInterface;
       CommandManager = commandManager;
-      ChatGui = chatGui;
+
       WindowSystem = new("TiltedPlugin");
 
       Configuration = LoadConfiguration();
-      Configuration.Initialize(this);
+      Configuration.Initialize(SaveConfiguration);
 
-      CameraTilter = new CameraTilter(this);
-      Condition = Service.Condition;
-      Service.Framework.Update += CameraTilter.OnUpdate;
+      CameraTilter = new CameraTilter(Configuration);
 
-      Window = new TiltedUI(this)
+      Window = new TiltedUI(Configuration)
       {
         IsOpen = Configuration.IsVisible
       };
@@ -57,28 +49,20 @@ namespace Tilted
         HelpMessage = "opens the configuration window"
       });
 
+      Service.Framework.Update += CameraTilter.OnUpdate;
       PluginInterface.UiBuilder.Draw += DrawUI;
       PluginInterface.UiBuilder.OpenConfigUi += DrawConfigUI;
     }
 
     public void Dispose()
     {
+      Service.Framework.Update -= CameraTilter.OnUpdate;
       PluginInterface.UiBuilder.Draw -= DrawUI;
       PluginInterface.UiBuilder.OpenConfigUi -= DrawConfigUI;
 
-      Service.Framework.Update -= CameraTilter.OnUpdate;
+      CommandManager.RemoveHandler(commandName);
 
       WindowSystem.RemoveAllWindows();
-
-      CommandManager.RemoveHandler(commandName);
-    }
-
-    public void PrintDebug(string message)
-    {
-      if (Configuration.DebugMessages)
-      {
-        ChatGui.Print($"TiltedPlugin: {message}");
-      }
     }
 
     private ConfigurationMKII LoadConfiguration()

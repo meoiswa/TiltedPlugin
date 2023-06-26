@@ -1,13 +1,9 @@
-﻿using Dalamud.Configuration;
-using Dalamud.Plugin;
-using FFXIVClientStructs.FFXIV.Client.Game.Control;
-using FFXIVClientStructs.FFXIV.Client.UI.Misc;
-using System;
+﻿using System;
 
 namespace Tilted
 {
-  [Serializable]
-  public unsafe class ConfigurationMKII : ConfigurationBase
+    [Serializable]
+  public class ConfigurationMKII : ConfigurationBase
   {
     public override int Version { get; set; } = 1;
 
@@ -19,16 +15,21 @@ namespace Tilted
     public bool EnableUnsheathed { get; set; } = false;
     public bool EnableMounted { get; set; } = false;
 
-    public float CombatTimeoutSeconds { get; set; } = ConfigModule.Instance()->GetIntValue(ConfigOption.WeaponAutoPutAwayTime);
+    public bool EnableZoomed { get; set; } = false;
+
+    public float CombatTimeoutSeconds { get; set; } = TiltedHelper.GetWeaponAutoPutAwayTime();
 
     public bool EnableTweakingCameraTilt { get; set; } = false;
     public bool EnableCameraTiltSmoothing { get; set; } = true;
-    public int CameraTiltWhenEnabled { get; set; } = ConfigModule.Instance()->GetIntValue(ConfigOption.TiltOffset);
-    public int CameraTiltWhenDisabled { get; set; } = ConfigModule.Instance()->GetIntValue(ConfigOption.TiltOffset);
+    
+    public float CameraTiltWhenEnabled { get; set; } = TiltedHelper.GetTiltOffset();
+    public float CameraTiltWhenDisabled { get; set; } = TiltedHelper.GetTiltOffset();
 
     public bool EnableCameraDistanceTweaking { get; set; } = false;
-    public float CameraDistanceWhenEnabled { get; set; } = CameraManager.Instance->GetActiveCamera()->Distance;
-    public float CameraDistanceWhenDisabled { get; set; } = CameraManager.Instance->GetActiveCamera()->Distance;
+    public float CameraDistanceWhenEnabled { get; set; } = TiltedHelper.GetActiveCameraDistance();
+    public float CameraDistanceWhenDisabled { get; set; } = TiltedHelper.GetActiveCameraDistance();
+
+    public float ZoomedTriggerDistance { get; set; } = TiltedHelper.GetActiveCameraDistance();
 
     public bool DebugForceEnabled = false;
     public bool DebugMessages = false;

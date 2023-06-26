@@ -1,20 +1,15 @@
-using Dalamud.Logging;
 using Dalamud.Interface.Windowing;
-using FFXIVClientStructs.FFXIV.Client.Game.Control;
-using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 using ImGuiNET;
 using System;
 using System.Numerics;
 
 namespace Tilted
 {
-  // It is good to have this be disposable in general, in case you ever need it
-  // to do any cleanup
-  public unsafe class TiltedUI : Window, IDisposable
+    public class TiltedUI : Window, IDisposable
   {
-    private readonly TiltedPlugin plugin;
+    private readonly ConfigurationMKII configuration;
 
-    public TiltedUI(TiltedPlugin plugin)
+    public TiltedUI(ConfigurationMKII configuration)
       : base(
         "Tilted##ConfigWindow",
         ImGuiWindowFlags.AlwaysAutoResize
@@ -22,7 +17,7 @@ namespace Tilted
         | ImGuiWindowFlags.NoCollapse
       )
     {
-      this.plugin = plugin;
+      this.configuration = configuration;
 
       SizeConstraints = new WindowSizeConstraints()
       {
@@ -39,18 +34,28 @@ namespace Tilted
     public override void OnClose()
     {
       base.OnClose();
-      plugin.Configuration.IsVisible = false;
-      plugin.Configuration.Save();
+      configuration.IsVisible = false;
+      configuration.Save();
     }
 
     private void DrawSectionMasterEnable()
     {
       // can't ref a property, so use a local copy
-      var enabled = plugin.Configuration.MasterEnable;
+      var enabled = configuration.MasterEnable;
       if (ImGui.Checkbox("Master Enable", ref enabled))
       {
-        plugin.Configuration.MasterEnable = enabled;
-        plugin.Configuration.Save();
+        configuration.MasterEnable = enabled;
+        configuration.Save();
+      }
+    }
+
+    private void DrawCheckbox(string label, string key, Func<bool> getter, Action<bool> setter)
+    {
+      ImGui.TextWrapped(label);
+      var value = getter();
+      if (ImGui.Checkbox(key, ref value))
+      {
+        setter(value);
       }
     }
 
@@ -63,38 +68,44 @@ namespace Tilted
         if (ImGui.CollapsingHeader("Duties"))
         {
           ImGui.Indent();
-          ImGui.TextWrapped("Enables when entering a Duty such as Dungeons and Trials.\nDisables after leaving the Duty.");
-          var enabledInInstance = plugin.Configuration.EnableInDuty;
-          if (ImGui.Checkbox("Trigger##EnabledInDuties", ref enabledInInstance))
-          {
-            plugin.Configuration.EnableInDuty = enabledInInstance;
-            plugin.Configuration.Save();
-          }
+          DrawCheckbox(
+            "Enables when entering a Duty such as Dungeons and Trials.\nDisables after leaving the Duty.",
+            "Trigger##EnabledInDuties",
+            () => configuration.EnableInDuty,
+            (value) =>
+            {
+              configuration.EnableInDuty = value;
+              configuration.Save();
+            }
+          );
           ImGui.Unindent();
         }
 
         if (ImGui.CollapsingHeader("Combat"))
         {
           ImGui.Indent();
-          ImGui.TextWrapped("Enables when entering combat.\nWaits \"Timeout\" seconds after leaving combat before disabling.\nClick \"Set\" to copy Auto-sheathe timer.");
-          var enabledInCombat = plugin.Configuration.EnableInCombat;
-          if (ImGui.Checkbox("Trigger##EnabledInCombat", ref enabledInCombat))
-          {
-            plugin.Configuration.EnableInCombat = enabledInCombat;
-            plugin.Configuration.Save();
-          }
+          DrawCheckbox(
+            "Enables when entering combat.\nWaits \"Timeout\" seconds after leaving combat before disabling.\nClick \"Set\" to copy Auto-sheathe timer.",
+            "Trigger##EnabledInCombat",
+            () => configuration.EnableInCombat,
+            (value) =>
+            {
+              configuration.EnableInCombat = value;
+              configuration.Save();
+            }
+          );
 
-          var combatTimeout = plugin.Configuration.CombatTimeoutSeconds;
+          var combatTimeout = configuration.CombatTimeoutSeconds;
           if (ImGui.Button("Set##SetCombatTimeout"))
           {
-            combatTimeout = ConfigModule.Instance()->GetIntValue(ConfigOption.WeaponAutoPutAwayTime);
+            combatTimeout = TiltedHelper.GetWeaponAutoPutAwayTime();
           }
           ImGui.SameLine();
           if (ImGui.InputFloat("Timeout##CombatTmeout", ref combatTimeout, 0.1f, 1.0f))
           {
             combatTimeout = Math.Clamp(combatTimeout, 0f, 10f);
-            plugin.Configuration.CombatTimeoutSeconds = combatTimeout;
-            plugin.Configuration.Save();
+            configuration.CombatTimeoutSeconds = combatTimeout;
+            configuration.Save();
           }
           ImGui.Unindent();
         }
@@ -102,26 +113,66 @@ namespace Tilted
         if (ImGui.CollapsingHeader("Weapon Sheathed"))
         {
           ImGui.Indent();
-          ImGui.TextWrapped("Enables when un-sheathing weapons.\nDisables when sheathing weapons.");
-          var enabledUnsheathed = plugin.Configuration.EnableUnsheathed;
-          if (ImGui.Checkbox("Trigger##EnabledUnsheathed", ref enabledUnsheathed))
-          {
-            plugin.Configuration.EnableUnsheathed = enabledUnsheathed;
-            plugin.Configuration.Save();
-          }
+          DrawCheckbox(
+            "Enables when un-sheathing weapons.\nDisables when sheathing weapons.",
+            "Trigger##EnabledUnsheathed",
+            () => configuration.EnableUnsheathed,
+            (value) =>
+            {
+              configuration.EnableUnsheathed = value;
+              configuration.Save();
+            }
+          );
           ImGui.Unindent();
         }
 
         if (ImGui.CollapsingHeader("Mounted"))
         {
           ImGui.Indent();
-          ImGui.TextWrapped("Enables when riding a Mount.\nDisables when dismounting.");
-          var enabledWhileMounted = plugin.Configuration.EnableMounted;
-          if (ImGui.Checkbox("Trigger##EnabledWhileMounted", ref enabledWhileMounted))
+          DrawCheckbox(
+            "Enables when riding a Mount.\nDisables when dismounting.",
+            "Trigger##EnabledWhileMounted",
+            () => configuration.EnableMounted,
+            (value) =>
+            {
+              configuration.EnableMounted = value;
+              configuration.Save();
+            }
+          );
+          ImGui.Unindent();
+        }
+
+        if (ImGui.CollapsingHeader("Zoomed"))
+        {
+          ImGui.Indent();
+          DrawCheckbox(
+            "Enables when zooming in past certain amount.\nDisables when zooming out.",
+            "Trigger##EnabledZoomed",
+            () => configuration.EnableZoomed,
+            (value) =>
+            {
+              configuration.EnableZoomed = value;
+              configuration.Save();
+            }
+          );
+
+          var triggerDistance = configuration.ZoomedTriggerDistance;
+          if (ImGui.Button("Set##TriggerDistance"))
           {
-            plugin.Configuration.EnableMounted = enabledWhileMounted;
-            plugin.Configuration.Save();
+            triggerDistance = TiltedHelper.GetActiveCameraDistance();
           }
+          ImGui.SameLine();
+          if (ImGui.InputFloat("Enabled##TriggerDistance", ref triggerDistance, 0.1f, 1.0f))
+          {
+            triggerDistance = Math.Clamp(triggerDistance, 1.5f, 20f);
+          }
+
+          if (triggerDistance != configuration.ZoomedTriggerDistance)
+          {
+            configuration.ZoomedTriggerDistance = triggerDistance;
+            configuration.Save();
+          }
+
           ImGui.Unindent();
         }
 
@@ -135,119 +186,129 @@ namespace Tilted
       {
         ImGui.Indent();
 
-        if (ImGui.CollapsingHeader("Tilt Angle"))
+        DrawTiltAngleSection();
+        DrawCameraDistanceSection();
+
+        ImGui.Unindent();
+      }
+    }
+
+    private void DrawTiltAngleSection()
+    {
+      if (ImGui.CollapsingHeader("Tilt Angle"))
+      {
+        ImGui.Indent();
+
+        ImGui.TextWrapped("These values alter the Character Configuration value:\n  \"3rd Person Camera Angle\".\nClick \"Set\" to copy the current camera tilt angle");
+
+        var tiltEnabled = configuration.EnableTweakingCameraTilt;
+        if (ImGui.Checkbox("Enabled##TweakCameraTilt", ref tiltEnabled))
         {
-          ImGui.Indent();
-
-          ImGui.TextWrapped("These values alter the Character Configuration value:\n  \"3rd Person Camera Angle\".\nClick \"Set\" to copy the current camera tilt angle");
-
-          var tiltEnabled = plugin.Configuration.EnableTweakingCameraTilt;
-          if (ImGui.Checkbox("Enabled##TweakCameraTilt", ref tiltEnabled))
-          {
-            plugin.Configuration.EnableTweakingCameraTilt = tiltEnabled;
-            plugin.Configuration.Save();
-          }
-
-          var inTilt = plugin.Configuration.CameraTiltWhenEnabled;
-          if (ImGui.Button("Set##InTilt"))
-          {
-            inTilt = ConfigModule.Instance()->GetIntValue(ConfigOption.TiltOffset);
-          }
-          ImGui.SameLine();
-          if (ImGui.InputInt("Enabled##EnabledTilt", ref inTilt))
-          {
-            inTilt = Math.Clamp(inTilt, 0, 100);
-            plugin.Configuration.CameraTiltWhenEnabled = inTilt;
-            plugin.Configuration.Save();
-          }
-
-          if (inTilt != plugin.Configuration.CameraTiltWhenEnabled)
-          {
-            plugin.Configuration.CameraTiltWhenEnabled = inTilt;
-            plugin.Configuration.Save();
-          }
-
-          var outTilt = plugin.Configuration.CameraTiltWhenDisabled;
-          if (ImGui.Button("Set##OutTilt"))
-          {
-            outTilt = ConfigModule.Instance()->GetIntValue(ConfigOption.TiltOffset);
-          }
-          ImGui.SameLine();
-          if (ImGui.InputInt("Disabled##DisabledTilt", ref outTilt))
-          {
-            outTilt = Math.Clamp(outTilt, 0, 100);
-          }
-
-          if (outTilt != plugin.Configuration.CameraTiltWhenDisabled)
-          {
-            plugin.Configuration.CameraTiltWhenDisabled = outTilt;
-            plugin.Configuration.Save();
-          }
-
-          var smoothing = plugin.Configuration.EnableCameraTiltSmoothing;
-          if (ImGui.Checkbox("Smoothing##SmoothingTilt", ref smoothing))
-          {
-            plugin.Configuration.EnableCameraTiltSmoothing = smoothing;
-            plugin.Configuration.Save();
-          }
-
-          ImGui.Unindent();
+          configuration.EnableTweakingCameraTilt = tiltEnabled;
+          configuration.Save();
         }
 
-        if (ImGui.CollapsingHeader("Camera Distance"))
+        int inTilt = (int)configuration.CameraTiltWhenEnabled;
+        if (ImGui.Button("Set##InTilt"))
         {
-          ImGui.Indent();
+          inTilt = (int)TiltedHelper.GetTiltOffset();
+        }
+        ImGui.SameLine();
+        if (ImGui.InputInt("Enabled##EnabledTilt", ref inTilt))
+        {
+          inTilt = Math.Clamp(inTilt, 0, 100);
+        }
 
-          ImGui.TextWrapped("Tweaks the camera distance (Zoom).\nOnly happens when transitioning between states\nSmoothing is always applied.\nClick \"Set\" to copy the current camera distance.");
+        if (inTilt != configuration.CameraTiltWhenEnabled)
+        {
+          configuration.CameraTiltWhenEnabled = (uint)inTilt;
+          configuration.Save();
+        }
 
-          var distanceEnabled = plugin.Configuration.EnableCameraDistanceTweaking;
-          if (ImGui.Checkbox("Enabled##TweakCameraDistance", ref distanceEnabled))
-          {
-            plugin.Configuration.EnableCameraDistanceTweaking = distanceEnabled;
-            plugin.Configuration.Save();
-          }
+        int outTilt = (int)configuration.CameraTiltWhenDisabled;
+        if (ImGui.Button("Set##OutTilt"))
+        {
+          outTilt = (int)TiltedHelper.GetTiltOffset();
+        }
+        ImGui.SameLine();
+        if (ImGui.InputInt("Disabled##DisabledTilt", ref outTilt))
+        {
+          outTilt = Math.Clamp(outTilt, 0, 100);
+        }
 
-          var outDistance = plugin.Configuration.CameraDistanceWhenDisabled;
+        if (outTilt != configuration.CameraTiltWhenDisabled)
+        {
+          configuration.CameraTiltWhenDisabled = (uint)outTilt;
+          configuration.Save();
+        }
 
-          var inDistance = plugin.Configuration.CameraDistanceWhenEnabled;
-          if (ImGui.Button("Set##InDistance"))
-          {
-            inDistance = CameraManager.Instance->GetActiveCamera()->Distance;
-          }
-          ImGui.SameLine();
-          if (ImGui.InputFloat("Enabled##EnabledDistance", ref inDistance, 0.1f, 1.0f))
-          {
-            inDistance = Math.Clamp(inDistance, 1.5f, 20f);
-          }
-
-          if (inDistance != plugin.Configuration.CameraDistanceWhenEnabled)
-          {
-            plugin.Configuration.CameraDistanceWhenEnabled = inDistance;
-            plugin.Configuration.Save();
-          }
-
-          if (ImGui.Button("Set##OutDistance"))
-          {
-            outDistance = CameraManager.Instance->GetActiveCamera()->Distance;
-          }
-          ImGui.SameLine();
-          if (ImGui.InputFloat("Disabled##DisabledDistance", ref outDistance, 0.1f, 1.0f))
-          {
-            outDistance = Math.Clamp(outDistance, 1.5f, 20f);
-          }
-
-          if (outDistance != plugin.Configuration.CameraDistanceWhenDisabled)
-          {
-            plugin.Configuration.CameraDistanceWhenDisabled = outDistance;
-            plugin.Configuration.Save();
-          }
-          ImGui.Unindent();
+        var smoothing = configuration.EnableCameraTiltSmoothing;
+        if (ImGui.Checkbox("Smoothing##SmoothingTilt", ref smoothing))
+        {
+          configuration.EnableCameraTiltSmoothing = smoothing;
+          configuration.Save();
         }
 
         ImGui.Unindent();
       }
     }
 
+    private void DrawCameraDistanceSection()
+    {
+      if (ImGui.CollapsingHeader("Camera Distance"))
+      {
+        ImGui.Indent();
+
+        ImGui.TextWrapped("Tweaks the camera distance (Zoom)."
+          + "\nOnly happens when transitioning between states"
+          + "\nSmoothing is always applied."
+          + "\nClick \"Set\" to copy the current camera distance."
+          + "\n(Disabled when using Zoomed trigger.");
+
+        var distanceEnabled = configuration.EnableCameraDistanceTweaking;
+        if (ImGui.Checkbox("Enabled##TweakCameraDistance", ref distanceEnabled))
+        {
+          configuration.EnableCameraDistanceTweaking = distanceEnabled;
+          configuration.Save();
+        }
+
+        var inDistance = configuration.CameraDistanceWhenEnabled;
+        if (ImGui.Button("Set##InDistance"))
+        {
+          inDistance = TiltedHelper.GetActiveCameraDistance();
+        }
+        ImGui.SameLine();
+        if (ImGui.InputFloat("Enabled##EnabledDistance", ref inDistance, 0.1f, 1.0f))
+        {
+          inDistance = Math.Clamp(inDistance, 1.5f, 20f);
+        }
+
+        if (inDistance != configuration.CameraDistanceWhenEnabled)
+        {
+          configuration.CameraDistanceWhenEnabled = inDistance;
+          configuration.Save();
+        }
+
+        var outDistance = configuration.CameraDistanceWhenDisabled;
+        if (ImGui.Button("Set##OutDistance"))
+        {
+          outDistance = TiltedHelper.GetActiveCameraDistance();
+        }
+        ImGui.SameLine();
+        if (ImGui.InputFloat("Disabled##DisabledDistance", ref outDistance, 0.1f, 1.0f))
+        {
+          outDistance = Math.Clamp(outDistance, 1.5f, 20f);
+        }
+
+        if (outDistance != configuration.CameraDistanceWhenDisabled)
+        {
+          configuration.CameraDistanceWhenDisabled = outDistance;
+          configuration.Save();
+        }
+        ImGui.Unindent();
+      }
+    }
+    
     public void DrawDebugSection()
     {
       if (ImGui.CollapsingHeader("Debug Options"))
@@ -257,18 +318,18 @@ namespace Tilted
         ImGui.TextWrapped("Debug Options\nUse these to test your settings.");
         if (ImGui.Button("Force Enabled state"))
         {
-          plugin.Configuration.DebugForceEnabled = true;
+          configuration.DebugForceEnabled = true;
         }
         if (ImGui.Button("Reset state"))
         {
-          plugin.Configuration.DebugForceEnabled = false;
+          configuration.DebugForceEnabled = false;
         }
 
-        var debugMessages = plugin.Configuration.DebugMessages;
+        var debugMessages = configuration.DebugMessages;
         if (ImGui.Checkbox("Debug Messages", ref debugMessages))
         {
-          plugin.Configuration.DebugMessages = debugMessages;
-          plugin.Configuration.Save();
+          configuration.DebugMessages = debugMessages;
+          configuration.Save();
         }
 
         ImGui.Unindent();

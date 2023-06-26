@@ -1,13 +1,9 @@
-﻿using Dalamud.Configuration;
-using Dalamud.Plugin;
-using FFXIVClientStructs.FFXIV.Client.Game.Control;
-using FFXIVClientStructs.FFXIV.Client.UI.Misc;
-using System;
+﻿using System;
 
 namespace Tilted
 {
-  [Serializable]
-  public unsafe class ConfigurationMKI : ConfigurationBase
+    [Serializable]
+  public class ConfigurationMKI : ConfigurationBase
   {
     public override int Version { get; set; } = 0;
 
@@ -23,15 +19,15 @@ namespace Tilted
 
     public bool TweakCameraTilt { get; set; } = false;
 
-    public int EnabledCameraTilt { get; set; } = ConfigModule.Instance()->GetIntValue(ConfigOption.TiltOffset);
-    public int DisabledCameraTilt { get; set; } = ConfigModule.Instance()->GetIntValue(ConfigOption.TiltOffset);
+    public float EnabledCameraTilt { get; set; } = TiltedHelper.GetTiltOffset();
+    public float DisabledCameraTilt { get; set; } = TiltedHelper.GetTiltOffset();
 
     public bool TweakCameraDistance { get; set; } = false;
 
-    public float EnabledCameraDistance { get; set; } = CameraManager.Instance->GetActiveCamera()->Distance;
-    public float DisabledCameraDistance { get; set; } = CameraManager.Instance->GetActiveCamera()->Distance;
+    public float EnabledCameraDistance { get; set; } = TiltedHelper.GetActiveCameraDistance();
+    public float DisabledCameraDistance { get; set; } = TiltedHelper.GetActiveCameraDistance();
 
-    public float CombatTimeoutSeconds { get; set; } = ConfigModule.Instance()->GetIntValue(ConfigOption.WeaponAutoPutAwayTime);
+    public float CombatTimeoutSeconds { get; set; } = TiltedHelper.GetWeaponAutoPutAwayTime();
 
     public bool DebugForceEnabled = false;
     public bool DebugMessages = false;

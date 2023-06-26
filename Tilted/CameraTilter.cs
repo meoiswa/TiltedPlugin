@@ -2,26 +2,19 @@ using System;
 using Dalamud.Game;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Logging;
-using FFXIVClientStructs.FFXIV.Client.Game;
-using FFXIVClientStructs.FFXIV.Client.Game.Control;
-using FFXIVClientStructs.FFXIV.Client.Game.UI;
-using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 
 namespace Tilted
 {
-  public unsafe class CameraTilter
+    public class CameraTilter
   {
-    private readonly TiltedPlugin plugin;
-    private readonly GameMain* gameMain;
-    private readonly CameraManager* cameraManager;
+    private readonly ConfigurationMKII configuration;
 
-    private readonly ConfigModule* configModule;
-    private readonly UIState* uiState;
+    private bool IsMounted => Service.Condition[ConditionFlag.Mounted];
+    private bool InCombat => Service.Condition[ConditionFlag.InCombat];
+    private bool BoundByDuty => Service.Condition[ConditionFlag.BoundByDuty] && !Service.Condition[ConditionFlag.BetweenAreas] && !Service.Condition[ConditionFlag.OccupiedInCutSceneEvent];
 
-    private bool IsMounted => plugin.Condition[ConditionFlag.Mounted];
-    private bool InCombat => plugin.Condition[ConditionFlag.InCombat];
-    private bool BoundByDuty => plugin.Condition[ConditionFlag.BoundByDuty] && !plugin.Condition[ConditionFlag.BetweenAreas] && !plugin.Condition[ConditionFlag.OccupiedInCutSceneEvent];
-    private bool Unsheathed => uiState->WeaponState.IsUnsheathed;
+    public bool ZoomedIn = false;
+
     private bool IsEnabled = false;
 
     private float CurrentTilt = 0;
@@ -29,24 +22,22 @@ namespace Tilted
 
     public static float InOutSine(float t) => (float)(Math.Cos(t * Math.PI) - 1) / -2;
 
-    public CameraTilter(TiltedPlugin plugin)
+    public CameraTilter(ConfigurationMKII configuration)
     {
-      this.plugin = plugin;
-      gameMain = GameMain.Instance();
-      cameraManager = CameraManager.Instance;
-      configModule = ConfigModule.Instance();
-      uiState = UIState.Instance();
+      this.configuration = configuration;
 
-      CurrentTilt = configModule->GetIntValue(ConfigOption.TiltOffset);
+      CurrentTilt = TiltedHelper.GetTiltOffset();
     }
 
     public void OnUpdate(Framework framework)
     {
-      if (plugin.Configuration.MasterEnable)
+      if (configuration.MasterEnable)
       {
+        UpdateIsZoomed();
+
         if (EvaluateTriggersAndSetIsEnabled())
         {
-          if (plugin.Configuration.EnableCameraDistanceTweaking)
+          if (configuration.EnableCameraDistanceTweaking && !configuration.EnableZoomed)
           {
             TweakCameraDistance();
           }
@@ -54,10 +45,24 @@ namespace Tilted
 
         UpdateCombatTimeoutTimer(framework);
 
-        if (plugin.Configuration.EnableTweakingCameraTilt)
+        if (configuration.EnableTweakingCameraTilt)
         {
           TweakCameraTilt(framework);
         }
+      }
+    }
+
+    private void UpdateIsZoomed()
+    {
+      var dist = TiltedHelper.GetActiveCameraDistance();
+
+      if (dist < configuration.ZoomedTriggerDistance)
+      {
+        ZoomedIn = true;
+      }
+      else
+      {
+        ZoomedIn = false;
       }
     }
 
@@ -65,7 +70,7 @@ namespace Tilted
     {
       if (InCombat)
       {
-        TimeoutTime = plugin.Configuration.CombatTimeoutSeconds;
+        TimeoutTime = configuration.CombatTimeoutSeconds;
       }
       else if (TimeoutTime > 0)
       {
@@ -75,35 +80,35 @@ namespace Tilted
 
     private void TweakCameraTilt(Framework framework)
     {
-      var TargetTilt = CurrentTilt;
+      float targetTilt;
       if (IsEnabled)
       {
-        TargetTilt = plugin.Configuration.CameraTiltWhenEnabled;
+        targetTilt = configuration.CameraTiltWhenEnabled;
       }
       else
       {
-        TargetTilt = plugin.Configuration.CameraTiltWhenDisabled;
+        targetTilt = configuration.CameraTiltWhenDisabled;
       }
 
-      if (plugin.Configuration.EnableCameraTiltSmoothing)
+      if (configuration.EnableCameraTiltSmoothing)
       {
-        if (CurrentTilt > TargetTilt)
+        if (CurrentTilt > targetTilt)
         {
-          CurrentTilt = Math.Clamp(CurrentTilt - 0.05f * framework.UpdateDelta.Milliseconds, TargetTilt, 100f);
-          configModule->SetOption(ConfigOption.TiltOffset, (int)CurrentTilt);
+          CurrentTilt = Math.Clamp(CurrentTilt - 0.05f * framework.UpdateDelta.Milliseconds, targetTilt, 100f);
+          TiltedHelper.SetTiltOffset(CurrentTilt);
         }
-        else if (CurrentTilt < TargetTilt)
+        else if (CurrentTilt < targetTilt)
         {
-          CurrentTilt = Math.Clamp(CurrentTilt + 0.05f * framework.UpdateDelta.Milliseconds, 0f, TargetTilt);
-          configModule->SetOption(ConfigOption.TiltOffset, (int)CurrentTilt);
+          CurrentTilt = Math.Clamp(CurrentTilt + 0.05f * framework.UpdateDelta.Milliseconds, 0f, targetTilt);
+          TiltedHelper.SetTiltOffset(CurrentTilt);
         }
       }
       else
       {
-        if (CurrentTilt != TargetTilt)
+        if (CurrentTilt != targetTilt)
         {
-          CurrentTilt = TargetTilt;
-          configModule->SetOption(ConfigOption.TiltOffset, (int)CurrentTilt);
+          CurrentTilt = targetTilt;
+          TiltedHelper.SetTiltOffset(CurrentTilt);
         }
       }
     }
@@ -112,13 +117,13 @@ namespace Tilted
     {
       if (IsEnabled)
       {
-        plugin.PrintDebug($"Tweaking Camera Distance => Enabled Distance: {plugin.Configuration.CameraDistanceWhenEnabled}");
-        cameraManager->GetActiveCamera()->Distance = plugin.Configuration.CameraDistanceWhenEnabled;
+        PluginLog.LogVerbose($"Tweaking Camera Distance => Enabled Distance: {configuration.CameraDistanceWhenEnabled}");
+        TiltedHelper.SetActiveCameraDistance(configuration.CameraDistanceWhenEnabled);
       }
       else
       {
-        plugin.PrintDebug($"Tweaking Camera Distance => Disabled Distance: {plugin.Configuration.CameraDistanceWhenDisabled}");
-        cameraManager->GetActiveCamera()->Distance = plugin.Configuration.CameraDistanceWhenDisabled;
+        PluginLog.LogVerbose($"Tweaking Camera Distance => Disabled Distance: {configuration.CameraDistanceWhenDisabled}");
+        TiltedHelper.SetActiveCameraDistance(configuration.CameraDistanceWhenDisabled);
       }
     }
 
@@ -129,55 +134,61 @@ namespace Tilted
       if (IsEnabled)
       {
         if (
-          !plugin.Configuration.DebugForceEnabled
-          && (!plugin.Configuration.EnableInDuty || !(plugin.Configuration.EnableInDuty && BoundByDuty))
-          && (!plugin.Configuration.EnableUnsheathed || !(plugin.Configuration.EnableUnsheathed && Unsheathed))
-          && (!plugin.Configuration.EnableMounted || !(plugin.Configuration.EnableMounted && IsMounted))
-          && (!plugin.Configuration.EnableInCombat || !(plugin.Configuration.EnableInCombat && InCombat))
-          && (!plugin.Configuration.EnableInCombat || TimeoutTime <= 0)
+          !configuration.DebugForceEnabled
+          && (!configuration.EnableInDuty || !(configuration.EnableInDuty && BoundByDuty))
+          && (!configuration.EnableUnsheathed || !(configuration.EnableUnsheathed && TiltedHelper.GetIsUnsheathed()))
+          && (!configuration.EnableMounted || !(configuration.EnableMounted && IsMounted))
+          && (!configuration.EnableInCombat || !(configuration.EnableInCombat && InCombat))
+          && (!configuration.EnableInCombat || TimeoutTime <= 0)
+          && (!configuration.EnableZoomed || !(configuration.EnableZoomed && ZoomedIn))
         )
         {
-          plugin.PrintDebug($"Trigger: None => Disabled");
+          PluginLog.LogVerbose($"Trigger: None => Disabled");
           IsEnabled = false;
         }
 
         if (!IsEnabled)
         {
-          plugin.PrintDebug($"State changed => Disabled");
+          PluginLog.LogVerbose($"State changed => Disabled");
           didChange = true;
         }
       }
       else
       {
-        if (plugin.Configuration.DebugForceEnabled)
+        if (configuration.DebugForceEnabled)
         {
-          plugin.PrintDebug($"Trigger: Force Enabled => Enabled");
+          PluginLog.LogVerbose($"Trigger: Force Enabled => Enabled");
           IsEnabled = true;
         }
-        else if (plugin.Configuration.EnableInDuty && BoundByDuty)
+        else if (configuration.EnableInDuty && BoundByDuty)
         {
-          plugin.PrintDebug($"Trigger: In Duty => Enabled");
+          PluginLog.LogVerbose($"Trigger: In Duty => Enabled");
           IsEnabled = true;
         }
-        else if (plugin.Configuration.EnableUnsheathed && Unsheathed)
+        else if (configuration.EnableUnsheathed && TiltedHelper.GetIsUnsheathed())
         {
-          plugin.PrintDebug($"Trigger: Unsheathed => Enabled");
+          PluginLog.LogVerbose($"Trigger: Unsheathed => Enabled");
           IsEnabled = true;
         }
-        else if (plugin.Configuration.EnableMounted && IsMounted)
+        else if (configuration.EnableMounted && IsMounted)
         {
-          plugin.PrintDebug($"Trigger: Is Mounted => Enabled");
+          PluginLog.LogVerbose($"Trigger: Is Mounted => Enabled");
           IsEnabled = true;
         }
-        else if (plugin.Configuration.EnableInCombat && InCombat)
+        else if (configuration.EnableInCombat && InCombat)
         {
-          plugin.PrintDebug($"Trigger: In Combat => Enabled");
+          PluginLog.LogVerbose($"Trigger: In Combat => Enabled");
+          IsEnabled = true;
+        }
+        else if (configuration.EnableZoomed && ZoomedIn)
+        {
+          PluginLog.LogVerbose($"Trigger: Zoomed In => Enabled");
           IsEnabled = true;
         }
 
         if (IsEnabled)
         {
-          plugin.PrintDebug($"State changed => Enabled");
+          PluginLog.LogVerbose($"State changed => Enabled");
           didChange = true;
         }
       }
