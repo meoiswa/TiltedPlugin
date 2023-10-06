@@ -3,6 +3,7 @@ using Dalamud.Game.Command;
 using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
 using Dalamud.Plugin;
+using Dalamud.Plugin.Services;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -15,7 +16,7 @@ namespace Tilted
     private const string commandName = "/tilted";
 
     public DalamudPluginInterface PluginInterface { get; init; }
-    public CommandManager CommandManager { get; init; }
+    public ICommandManager CommandManager { get; init; }
     public ConfigurationMKII Configuration { get; init; }
     public WindowSystem WindowSystem { get; init; }
     public CameraTilter CameraTilter { get; init; }
@@ -23,7 +24,7 @@ namespace Tilted
 
     public TiltedPlugin(
         [RequiredVersion("1.0")] DalamudPluginInterface pluginInterface,
-        [RequiredVersion("1.0")] CommandManager commandManager)
+        [RequiredVersion("1.0")] ICommandManager commandManager)
     {
       pluginInterface.Create<Service>();
 

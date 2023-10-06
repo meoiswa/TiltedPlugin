@@ -2,10 +2,11 @@ using System;
 using Dalamud.Game;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Logging;
+using Dalamud.Plugin.Services;
 
 namespace Tilted
 {
-    public class CameraTilter
+  public class CameraTilter
   {
     private readonly ConfigurationMKII configuration;
 
@@ -29,7 +30,7 @@ namespace Tilted
       CurrentTilt = TiltedHelper.GetTiltOffset();
     }
 
-    public void OnUpdate(Framework framework)
+    public void OnUpdate(IFramework framework)
     {
       if (configuration.MasterEnable)
       {
@@ -66,7 +67,7 @@ namespace Tilted
       }
     }
 
-    private void UpdateCombatTimeoutTimer(Framework framework)
+    private void UpdateCombatTimeoutTimer(IFramework framework)
     {
       if (InCombat)
       {
@@ -78,7 +79,7 @@ namespace Tilted
       }
     }
 
-    private void TweakCameraTilt(Framework framework)
+    private void TweakCameraTilt(IFramework framework)
     {
       float targetTilt;
       if (IsEnabled)
@@ -117,12 +118,12 @@ namespace Tilted
     {
       if (IsEnabled)
       {
-        PluginLog.LogVerbose($"Tweaking Camera Distance => Enabled Distance: {configuration.CameraDistanceWhenEnabled}");
+        Service.PluginLog.Verbose($"Tweaking Camera Distance => Enabled Distance: {configuration.CameraDistanceWhenEnabled}");
         TiltedHelper.SetActiveCameraDistance(configuration.CameraDistanceWhenEnabled);
       }
       else
       {
-        PluginLog.LogVerbose($"Tweaking Camera Distance => Disabled Distance: {configuration.CameraDistanceWhenDisabled}");
+        Service.PluginLog.Verbose($"Tweaking Camera Distance => Disabled Distance: {configuration.CameraDistanceWhenDisabled}");
         TiltedHelper.SetActiveCameraDistance(configuration.CameraDistanceWhenDisabled);
       }
     }
@@ -143,13 +144,13 @@ namespace Tilted
           && (!configuration.EnableZoomed || !(configuration.EnableZoomed && ZoomedIn))
         )
         {
-          PluginLog.LogVerbose($"Trigger: None => Disabled");
+          Service.PluginLog.Verbose($"Trigger: None => Disabled");
           IsEnabled = false;
         }
 
         if (!IsEnabled)
         {
-          PluginLog.LogVerbose($"State changed => Disabled");
+          Service.PluginLog.Verbose($"State changed => Disabled");
           didChange = true;
         }
       }
@@ -157,38 +158,38 @@ namespace Tilted
       {
         if (configuration.DebugForceEnabled)
         {
-          PluginLog.LogVerbose($"Trigger: Force Enabled => Enabled");
+          Service.PluginLog.Verbose($"Trigger: Force Enabled => Enabled");
           IsEnabled = true;
         }
         else if (configuration.EnableInDuty && BoundByDuty)
         {
-          PluginLog.LogVerbose($"Trigger: In Duty => Enabled");
+          Service.PluginLog.Verbose($"Trigger: In Duty => Enabled");
           IsEnabled = true;
         }
         else if (configuration.EnableUnsheathed && TiltedHelper.GetIsUnsheathed())
         {
-          PluginLog.LogVerbose($"Trigger: Unsheathed => Enabled");
+          Service.PluginLog.Verbose($"Trigger: Unsheathed => Enabled");
           IsEnabled = true;
         }
         else if (configuration.EnableMounted && IsMounted)
         {
-          PluginLog.LogVerbose($"Trigger: Is Mounted => Enabled");
+          Service.PluginLog.Verbose($"Trigger: Is Mounted => Enabled");
           IsEnabled = true;
         }
         else if (configuration.EnableInCombat && InCombat)
         {
-          PluginLog.LogVerbose($"Trigger: In Combat => Enabled");
+          Service.PluginLog.Verbose($"Trigger: In Combat => Enabled");
           IsEnabled = true;
         }
         else if (configuration.EnableZoomed && ZoomedIn)
         {
-          PluginLog.LogVerbose($"Trigger: Zoomed In => Enabled");
+          Service.PluginLog.Verbose($"Trigger: Zoomed In => Enabled");
           IsEnabled = true;
         }
 
         if (IsEnabled)
         {
-          PluginLog.LogVerbose($"State changed => Enabled");
+          Service.PluginLog.Verbose($"State changed => Enabled");
           didChange = true;
         }
       }

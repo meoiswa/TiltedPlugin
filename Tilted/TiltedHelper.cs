@@ -18,7 +18,7 @@ namespace Tilted
     public static void SetTiltOffset(float value)
     {
       var converted = (value - 1f) / (100f - 1f) * (0.21f - (-0.08f)) + (-0.08f);
-      PluginLog.LogVerbose("Setting TiltOffset to {converted}", converted);
+      Service.PluginLog.Verbose("Setting TiltOffset to {converted}", converted);
       Service.GameConfig.Set(UiControlOption.TiltOffset, converted);
     }
 
@@ -26,7 +26,7 @@ namespace Tilted
     {
       unsafe
       {
-        return CameraManager.Instance->GetActiveCamera()->Distance;
+        return CameraManager.Instance()->GetActiveCamera()->Distance;
       }
     }
 
@@ -34,8 +34,8 @@ namespace Tilted
     {
       unsafe
       {
-        PluginLog.LogVerbose("Setting ActiveCameraDistance to {value}", value);
-        CameraManager.Instance->GetActiveCamera()->Distance = value;
+        Service.PluginLog.Verbose("Setting ActiveCameraDistance to {value}", value);
+        CameraManager.Instance()->GetActiveCamera()->Distance = value;
       }
     }
 
