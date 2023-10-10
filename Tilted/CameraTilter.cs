@@ -82,19 +82,30 @@ namespace Tilted
     private void TweakCameraTilt(IFramework framework)
     {
       float targetTilt;
-      if (IsEnabled)
+
+      if (configuration.EnableDistanceToTiltMapping)
       {
-        targetTilt = configuration.CameraTiltWhenEnabled;
+        var distance = TiltedHelper.GetActiveCameraDistance();
+        var distanceRatio = (distance - configuration.CameraDistanceWhenDisabled) / (configuration.CameraDistanceWhenEnabled - configuration.CameraDistanceWhenDisabled);
+        targetTilt = (configuration.CameraTiltWhenEnabled - configuration.CameraTiltWhenDisabled) * distanceRatio + configuration.CameraTiltWhenDisabled;
       }
       else
       {
-        targetTilt = configuration.CameraTiltWhenDisabled;
+        if (IsEnabled)
+        {
+          targetTilt = configuration.CameraTiltWhenEnabled;
+        }
+        else
+        {
+          targetTilt = configuration.CameraTiltWhenDisabled;
+        }
       }
 
       if (configuration.EnableCameraTiltSmoothing)
       {
         if (CurrentTilt > targetTilt)
         {
+
           CurrentTilt = Math.Clamp(CurrentTilt - 0.05f * framework.UpdateDelta.Milliseconds, targetTilt, 100f);
           TiltedHelper.SetTiltOffset(CurrentTilt);
         }
