@@ -287,8 +287,9 @@ namespace Tilted
         }
 
         ImGui.Indent();
-        ImGui.TextWrapped("When this setting is enabled the Camera Tilt will be set to a value between the \"Enabled\" and \"Disabled\" values based on the Camera Distance."
-          + "\nThis allows you to have a different tilt angle depending on how far the camera is zoomed out.");
+        ImGui.TextWrapped("When this setting is enabled the Camera Tilt will be set to a value in-between the \"Enabled\" and \"Disabled\" values based on the camera's distance from your character."
+          + "\nTriggers and Smoothing will have no effect while this setting is enabled."
+          );
         ImGui.Unindent();
 
         ImGui.Unindent();
