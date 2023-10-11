@@ -85,9 +85,10 @@ namespace Tilted
 
       if (configuration.EnableDistanceToTiltMapping)
       {
-        var distance = TiltedHelper.GetActiveCameraDistance();
-        var distanceRatio = (distance - configuration.CameraDistanceWhenDisabled) / (configuration.CameraDistanceWhenEnabled - configuration.CameraDistanceWhenDisabled);
-        targetTilt = (configuration.CameraTiltWhenEnabled - configuration.CameraTiltWhenDisabled) * distanceRatio + configuration.CameraTiltWhenDisabled;
+        float interpolatedDistance = TiltedHelper.GetActiveCameraDistanceInterpolated();
+        float distanceRatio = Math.Clamp((interpolatedDistance - configuration.MinimumCameraDistance) / (configuration.MaximumCameraDistance - configuration.MinimumCameraDistance), 0f, 1f);
+        
+        targetTilt = Math.Clamp(TiltedHelper.Lerp(configuration.CameraTiltWhenDisabled, configuration.CameraTiltWhenEnabled, distanceRatio), 0f, 100f);
       }
       else
       {

@@ -30,6 +30,18 @@ namespace Tilted
       }
     }
 
+    /**
+     * Returns the current camera distance as interpolated by the game's built-in camera motion easing function.
+     * Using this value can make camera motions set by the plugin feel more integrated to the camera motion built in to the game.
+     */
+    public static float GetActiveCameraDistanceInterpolated()
+    {
+      unsafe
+      {
+        return CameraManager.Instance()->GetActiveCamera()->InterpDistance;
+      }
+    }
+
     public static void SetActiveCameraDistance(float value)
     {
       unsafe
@@ -51,6 +63,14 @@ namespace Tilted
       {
         return UIState.Instance()->WeaponState.IsUnsheathed;
       }
+    }
+    
+    /**
+     * Linearly interpolate two values by value t.
+     */
+    public static float Lerp(float start, float end, float t) 
+    {
+    return (start * (1 - t)) + (end * t);
     }
   }
 }

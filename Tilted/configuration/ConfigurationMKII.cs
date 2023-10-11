@@ -27,6 +27,10 @@ namespace Tilted
     public float CameraTiltWhenEnabled { get; set; } = TiltedHelper.GetTiltOffset();
     public float CameraTiltWhenDisabled { get; set; } = TiltedHelper.GetTiltOffset();
 
+    public float MaximumCameraDistance { get; set; } = 20.0f;
+
+    public float MinimumCameraDistance { get; set; } = 1.5f;
+
     public bool EnableCameraDistanceTweaking { get; set; } = false;
     public float CameraDistanceWhenEnabled { get; set; } = TiltedHelper.GetActiveCameraDistance();
     public float CameraDistanceWhenDisabled { get; set; } = TiltedHelper.GetActiveCameraDistance();
