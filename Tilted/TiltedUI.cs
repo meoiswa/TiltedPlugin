@@ -256,6 +256,36 @@ namespace Tilted
           configuration.Save();
         }
 
+        float maximumDistance = configuration.MaximumCameraDistance;
+        if (ImGui.Button("Set##MaximumDistance"))
+        {
+          maximumDistance = TiltedHelper.GetActiveCameraDistance();
+          configuration.MaximumCameraDistance = maximumDistance;
+          configuration.Save();
+        }
+        ImGui.SameLine();
+        if (ImGui.InputFloat("Maximum##MaximumDistance", ref maximumDistance))
+        {
+          maximumDistance = Math.Clamp(maximumDistance, 1.5f, 20.0f);
+          configuration.MaximumCameraDistance = maximumDistance;
+          configuration.Save();
+        }
+
+        float minimumDistance = configuration.MinimumCameraDistance;
+        if (ImGui.Button("Set##MinimumDistance"))
+        {
+          minimumDistance = TiltedHelper.GetActiveCameraDistance();
+          configuration.MinimumCameraDistance = minimumDistance;
+          configuration.Save();
+        }
+        ImGui.SameLine();
+        if (ImGui.InputFloat("Minimum##MinimumDistance", ref minimumDistance))
+        {
+          minimumDistance = Math.Clamp(minimumDistance, 1.5f, 20.0f);
+          configuration.MinimumCameraDistance = minimumDistance;
+          configuration.Save();
+        }
+
         ImGui.Indent();
         ImGui.TextWrapped("When this setting is enabled the Camera Tilt will be set to a value between the \"Enabled\" and \"Disabled\" values based on the Camera Distance."
           + "\nThis allows you to have a different tilt angle depending on how far the camera is zoomed out.");
