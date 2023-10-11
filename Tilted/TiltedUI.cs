@@ -250,14 +250,14 @@ namespace Tilted
         }
 
         var mapping = configuration.EnableDistanceToTiltMapping;
-        if (ImGui.Checkbox("Mapping##MappingTilt", ref mapping))
+        if (ImGui.Checkbox("Interpolate by Distance##MappingTilt", ref mapping))
         {
           configuration.EnableDistanceToTiltMapping = mapping;
           configuration.Save();
         }
 
         ImGui.Indent();
-        ImGui.TextWrapped("When this setting is enabled, the Camera Tilt will be set to a value between the \"Enabled\" and \"Disabled\" values based on the Camera Distance."
+        ImGui.TextWrapped("When this setting is enabled the Camera Tilt will be set to a value between the \"Enabled\" and \"Disabled\" values based on the Camera Distance."
           + "\nThis allows you to have a different tilt angle depending on how far the camera is zoomed out.");
         ImGui.Unindent();
 
