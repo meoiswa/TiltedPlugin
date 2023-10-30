@@ -22,7 +22,7 @@ namespace Tilted
     public bool EnableTweakingCameraTilt { get; set; } = false;
     public bool EnableCameraTiltSmoothing { get; set; } = true;
 
-    public bool EnableDistanceToTiltMapping { get; set; } = true;
+    public bool EnableDistanceToTiltMapping { get; set; } = false;
     
     public float CameraTiltWhenEnabled { get; set; } = TiltedHelper.GetTiltOffset();
     public float CameraTiltWhenDisabled { get; set; } = TiltedHelper.GetTiltOffset();
