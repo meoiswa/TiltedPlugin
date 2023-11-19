@@ -10,6 +10,7 @@ namespace Tilted
     public bool IsVisible { get; set; } = true;
 
     public bool MasterEnable { get; set; } = true;
+    public bool EnableInGpose { get; set; } = false;
     public bool EnableInDuty { get; set; } = false;
     public bool EnableInCombat { get; set; } = false;
     public bool EnableUnsheathed { get; set; } = false;
