@@ -32,24 +32,31 @@ namespace Tilted
 
     public void OnUpdate(IFramework framework)
     {
-      if (configuration.MasterEnable)
+      if (!configuration.MasterEnable)
       {
-        UpdateIsZoomed();
+        return;
+      }
 
-        if (EvaluateTriggersAndSetIsEnabled())
+      if (FFXIVClientStructs.FFXIV.Client.Game.GameMain.IsInGPose() && !configuration.EnableInGpose)
+      {
+        return;
+      }
+
+      UpdateIsZoomed();
+
+      if (EvaluateTriggersAndSetIsEnabled())
+      {
+        if (configuration.EnableCameraDistanceTweaking && !configuration.EnableZoomed)
         {
-          if (configuration.EnableCameraDistanceTweaking && !configuration.EnableZoomed)
-          {
-            TweakCameraDistance();
-          }
+          TweakCameraDistance();
         }
+      }
 
-        UpdateCombatTimeoutTimer(framework);
+      UpdateCombatTimeoutTimer(framework);
 
-        if (configuration.EnableTweakingCameraTilt)
-        {
-          TweakCameraTilt(framework);
-        }
+      if (configuration.EnableTweakingCameraTilt)
+      {
+        TweakCameraTilt(framework);
       }
     }
 
