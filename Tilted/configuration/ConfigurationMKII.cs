@@ -14,6 +14,7 @@ namespace Tilted
     public bool EnableInCombat { get; set; } = false;
     public bool EnableUnsheathed { get; set; } = false;
     public bool EnableMounted { get; set; } = false;
+    public bool EnableFlying { get; set; } = false;
 
     public bool EnableZoomed { get; set; } = false;
 

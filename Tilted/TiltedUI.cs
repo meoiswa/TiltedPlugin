@@ -142,6 +142,22 @@ namespace Tilted
           ImGui.Unindent();
         }
 
+        if (ImGui.CollapsingHeader("Flying"))
+        {
+          ImGui.Indent();
+          DrawCheckbox(
+            "Enables when flying on a Mount.\nDisables when landed.",
+            "Trigger##EnabledWhileFlying",
+            () => configuration.EnableFlying,
+            (value) =>
+            {
+              configuration.EnableFlying = value;
+              configuration.Save();
+            }
+          );
+          ImGui.Unindent();
+        }
+
         if (ImGui.CollapsingHeader("Zoomed"))
         {
           ImGui.Indent();
