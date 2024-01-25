@@ -1,6 +1,7 @@
 using System;
 using Dalamud.Game;
 using Dalamud.Game.ClientState.Conditions;
+using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Logging;
 using Dalamud.Plugin.Services;
 
@@ -10,6 +11,7 @@ namespace Tilted
   {
     private readonly ConfigurationMKII configuration;
 
+    private bool IsFlying => Service.Condition[ConditionFlag.InFlight];
     private bool IsMounted => Service.Condition[ConditionFlag.Mounted];
     private bool InCombat => Service.Condition[ConditionFlag.InCombat];
     private bool BoundByDuty => Service.Condition[ConditionFlag.BoundByDuty] && !Service.Condition[ConditionFlag.BetweenAreas] && !Service.Condition[ConditionFlag.OccupiedInCutSceneEvent];
@@ -157,6 +159,7 @@ namespace Tilted
           !configuration.DebugForceEnabled
           && (!configuration.EnableInDuty || !(configuration.EnableInDuty && BoundByDuty))
           && (!configuration.EnableUnsheathed || !(configuration.EnableUnsheathed && TiltedHelper.GetIsUnsheathed()))
+          && (!configuration.EnableFlying || !(configuration.EnableFlying && IsFlying))
           && (!configuration.EnableMounted || !(configuration.EnableMounted && IsMounted))
           && (!configuration.EnableInCombat || !(configuration.EnableInCombat && InCombat))
           && (!configuration.EnableInCombat || TimeoutTime <= 0)
@@ -188,6 +191,11 @@ namespace Tilted
         else if (configuration.EnableUnsheathed && TiltedHelper.GetIsUnsheathed())
         {
           Service.PluginLog.Verbose($"Trigger: Unsheathed => Enabled");
+          IsEnabled = true;
+        }
+        else if (configuration.EnableFlying && IsFlying)
+        {
+          Service.PluginLog.Verbose($"Trigger: Is Flying => Enabled");
           IsEnabled = true;
         }
         else if (configuration.EnableMounted && IsMounted)

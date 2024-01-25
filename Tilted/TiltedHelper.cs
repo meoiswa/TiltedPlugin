@@ -64,13 +64,13 @@ namespace Tilted
         return UIState.Instance()->WeaponState.IsUnsheathed;
       }
     }
-    
+
     /**
      * Linearly interpolate two values by value t.
      */
-    public static float Lerp(float start, float end, float t) 
+    public static float Lerp(float start, float end, float t)
     {
-    return (start * (1 - t)) + (end * t);
+      return (start * (1 - t)) + (end * t);
     }
   }
 }
