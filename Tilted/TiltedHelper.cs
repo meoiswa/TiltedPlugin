@@ -11,13 +11,13 @@ namespace Tilted
     public static float GetTiltOffset()
     {
       Service.GameConfig.TryGet(UiControlOption.TiltOffset, out float tiltOffset);
-      var converted = (tiltOffset - (-0.08f)) / (0.21f - (-0.08f)) * (100f - 1f) + 1f;
+      var converted = (tiltOffset - (-0.08f)) / (0.21f - (-0.08f)) * 100f;
       return converted;
     }
 
     public static void SetTiltOffset(float value)
     {
-      var converted = (value - 1f) / (100f - 1f) * (0.21f - (-0.08f)) + (-0.08f);
+      var converted = value / 100f * (0.21f - (-0.08f)) + (-0.08f);
       Service.PluginLog.Verbose("Setting TiltOffset to {converted}", converted);
       Service.GameConfig.Set(UiControlOption.TiltOffset, converted);
     }
