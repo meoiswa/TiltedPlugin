@@ -11,7 +11,7 @@ namespace Tilted
     public static float GetTiltOffset()
     {
       Service.GameConfig.TryGet(UiControlOption.TiltOffset, out float tiltOffset);
-      var converted = (tiltOffset - (-0.08f)) / (0.21f - (0.08f)) * (100f - 1f) + 1f;
+      var converted = (tiltOffset - (-0.08f)) / (0.21f - (-0.08f)) * (100f - 1f) + 1f;
       return converted;
     }
 
