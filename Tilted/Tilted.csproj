@@ -3,8 +3,8 @@
   <PropertyGroup>
     <Authors>Meoiswa</Authors>
     <Company></Company>
-    <Version>3.3.0.1</Version>
-    <Description>Automatic Camera Adjustements</Description>
+    <Version>3.4.1.2</Version>
+    <Description>Automatic Camera Adjustments</Description>
     <Copyright></Copyright>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>

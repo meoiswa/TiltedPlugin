@@ -47,6 +47,12 @@ namespace Tilted
         configuration.MasterEnable = enabled;
         configuration.Save();
       }
+      var enabledInGpose = configuration.EnableInGpose;
+      if (ImGui.Checkbox("Enable in Gpose", ref enabledInGpose))
+      {
+        configuration.EnableInGpose = enabledInGpose;
+        configuration.Save();
+      }
     }
 
     private void DrawCheckbox(string label, string key, Func<bool> getter, Action<bool> setter)
@@ -136,6 +142,22 @@ namespace Tilted
             (value) =>
             {
               configuration.EnableMounted = value;
+              configuration.Save();
+            }
+          );
+          ImGui.Unindent();
+        }
+
+        if (ImGui.CollapsingHeader("Flying"))
+        {
+          ImGui.Indent();
+          DrawCheckbox(
+            "Enables when flying on a Mount.\nDisables when landed.",
+            "Trigger##EnabledWhileFlying",
+            () => configuration.EnableFlying,
+            (value) =>
+            {
+              configuration.EnableFlying = value;
               configuration.Save();
             }
           );
