@@ -15,7 +15,7 @@ namespace Tilted
 
     private const string commandName = "/tilted";
 
-    public DalamudPluginInterface PluginInterface { get; init; }
+    public IDalamudPluginInterface PluginInterface { get; init; }
     public ICommandManager CommandManager { get; init; }
     public ConfigurationMKII Configuration { get; init; }
     public WindowSystem WindowSystem { get; init; }
@@ -23,8 +23,8 @@ namespace Tilted
     public TiltedUI Window { get; init; }
 
     public TiltedPlugin(
-        [RequiredVersion("1.0")] DalamudPluginInterface pluginInterface,
-        [RequiredVersion("1.0")] ICommandManager commandManager)
+        IDalamudPluginInterface pluginInterface,
+        ICommandManager commandManager)
     {
       pluginInterface.Create<Service>();
 
@@ -53,6 +53,7 @@ namespace Tilted
       Service.Framework.Update += CameraTilter.OnUpdate;
       PluginInterface.UiBuilder.Draw += DrawUI;
       PluginInterface.UiBuilder.OpenConfigUi += DrawConfigUI;
+      PluginInterface.UiBuilder.OpenMainUi += DrawConfigUI;
     }
 
     public void Dispose()
@@ -60,6 +61,7 @@ namespace Tilted
       Service.Framework.Update -= CameraTilter.OnUpdate;
       PluginInterface.UiBuilder.Draw -= DrawUI;
       PluginInterface.UiBuilder.OpenConfigUi -= DrawConfigUI;
+      PluginInterface.UiBuilder.OpenMainUi -= DrawConfigUI;
 
       CommandManager.RemoveHandler(commandName);
 
