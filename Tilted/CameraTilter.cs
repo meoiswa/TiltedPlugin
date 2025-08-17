@@ -96,7 +96,7 @@ namespace Tilted
       {
         float interpolatedDistance = TiltedHelper.GetActiveCameraDistanceInterpolated();
         float distanceRatio = Math.Clamp((interpolatedDistance - configuration.MinimumCameraDistance) / (configuration.MaximumCameraDistance - configuration.MinimumCameraDistance), 0f, 1f);
-        
+
         targetTilt = Math.Clamp(TiltedHelper.Lerp(configuration.CameraTiltWhenDisabled, configuration.CameraTiltWhenEnabled, distanceRatio), 0f, 100f);
       }
       else
@@ -151,77 +151,63 @@ namespace Tilted
 
     private bool EvaluateTriggersAndSetIsEnabled()
     {
-      var didChange = false;
+      var (shouldBeEnabled, trigger) = GetEnabledStateAndTrigger();
+      var didChange = IsEnabled != shouldBeEnabled;
 
-      if (IsEnabled)
+      if (didChange)
       {
-        if (
-          !configuration.DebugForceEnabled
-          && (!configuration.EnableInDuty || !(configuration.EnableInDuty && BoundByDuty))
-          && (!configuration.EnableUnsheathed || !(configuration.EnableUnsheathed && TiltedHelper.GetIsUnsheathed()))
-          && (!configuration.EnableFlying || !(configuration.EnableFlying && IsFlying))
-          && (!configuration.EnableMounted || !(configuration.EnableMounted && IsMounted))
-          && (!configuration.EnableInCombat || !(configuration.EnableInCombat && InCombat))
-          && (!configuration.EnableInCombat || TimeoutTime <= 0)
-          && (!configuration.EnableZoomed || !(configuration.EnableZoomed && ZoomedIn))
-        )
-        {
-          Service.PluginLog.Verbose($"Trigger: None => Disabled");
-          IsEnabled = false;
-        }
-
-        if (!IsEnabled)
-        {
-          Service.PluginLog.Verbose($"State changed => Disabled");
-          didChange = true;
-        }
-      }
-      else
-      {
-        if (configuration.DebugForceEnabled)
-        {
-          Service.PluginLog.Verbose($"Trigger: Force Enabled => Enabled");
-          IsEnabled = true;
-        }
-        else if (configuration.EnableInDuty && BoundByDuty)
-        {
-          Service.PluginLog.Verbose($"Trigger: In Duty => Enabled");
-          IsEnabled = true;
-        }
-        else if (configuration.EnableUnsheathed && TiltedHelper.GetIsUnsheathed())
-        {
-          Service.PluginLog.Verbose($"Trigger: Unsheathed => Enabled");
-          IsEnabled = true;
-        }
-        else if (configuration.EnableFlying && IsFlying)
-        {
-          Service.PluginLog.Verbose($"Trigger: Is Flying => Enabled");
-          IsEnabled = true;
-        }
-        else if (configuration.EnableMounted && IsMounted)
-        {
-          Service.PluginLog.Verbose($"Trigger: Is Mounted => Enabled");
-          IsEnabled = true;
-        }
-        else if (configuration.EnableInCombat && InCombat)
-        {
-          Service.PluginLog.Verbose($"Trigger: In Combat => Enabled");
-          IsEnabled = true;
-        }
-        else if (configuration.EnableZoomed && ZoomedIn)
-        {
-          Service.PluginLog.Verbose($"Trigger: Zoomed In => Enabled");
-          IsEnabled = true;
-        }
-
-        if (IsEnabled)
-        {
-          Service.PluginLog.Verbose($"State changed => Enabled");
-          didChange = true;
-        }
+        IsEnabled = shouldBeEnabled;
+        Service.PluginLog.Verbose($"State changed => {(IsEnabled ? "Enabled" : "Disabled")}. Trigger: {trigger}");
       }
 
       return didChange;
+    }
+
+    private (bool isEnabled, string triggerName) GetEnabledStateAndTrigger()
+    {
+      // Check for each enabling condition and return the corresponding trigger name.
+      if (configuration.DebugForceEnabled)
+      {
+        return (true, "Force Enabled");
+      }
+      if (configuration.EnableInDuty && BoundByDuty)
+      {
+        return (true, "In Duty");
+      }
+      if (configuration.EnableUnsheathed && TiltedHelper.GetIsUnsheathed())
+      {
+        return (true, "Unsheathed");
+      }
+      if (configuration.EnableFlying && IsFlying)
+      {
+        return (true, "Is Flying");
+      }
+      if (configuration.EnableMounted && IsMounted)
+      {
+        return (true, "Is Mounted");
+      }
+
+      if (configuration.EnableInCombat)
+      {
+        // If currently in combat, the feature should be enabled.
+        if (InCombat)
+        {
+          return (true, "In Combat");
+        }
+        // If not in combat but the timeout timer is still running, stay enabled.
+        if (TimeoutTime > 0)
+        {
+          return (true, "Timeout Active");
+        }
+      }
+
+      if (configuration.EnableZoomed && ZoomedIn)
+      {
+        return (true, "Zoomed In");
+      }
+
+      // If none of the enabling conditions are met, it should be disabled.
+      return (false, "None");
     }
   }
 }

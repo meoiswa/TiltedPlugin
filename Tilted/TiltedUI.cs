@@ -381,19 +381,10 @@ namespace Tilted
         ImGui.Indent();
 
         ImGui.TextWrapped("Debug Options\nUse these to test your settings.");
-        if (ImGui.Button("Force Enabled state"))
+        var forceEnabled = configuration.DebugForceEnabled;
+        if (ImGui.Checkbox("Force Enabled", ref forceEnabled))
         {
-          configuration.DebugForceEnabled = true;
-        }
-        if (ImGui.Button("Reset state"))
-        {
-          configuration.DebugForceEnabled = false;
-        }
-
-        var debugMessages = configuration.DebugMessages;
-        if (ImGui.Checkbox("Debug Messages", ref debugMessages))
-        {
-          configuration.DebugMessages = debugMessages;
+          configuration.DebugForceEnabled = forceEnabled;
           configuration.Save();
         }
 
