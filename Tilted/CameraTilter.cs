@@ -16,12 +16,17 @@ namespace Tilted
     private bool InCombat => Service.Condition[ConditionFlag.InCombat];
     private bool BoundByDuty => Service.Condition[ConditionFlag.BoundByDuty] && !Service.Condition[ConditionFlag.BetweenAreas] && !Service.Condition[ConditionFlag.OccupiedInCutSceneEvent];
 
-    public bool ZoomedIn = false;
+  /// <summary>Whether the camera is currently considered "zoomed in".</summary>
+  public bool ZoomedIn = false;
 
-    private bool IsEnabled = false;
+  /// <summary>Whether the tilting behaviour is currently enabled by triggers.</summary>
+  private bool IsEnabled = false;
 
-    private float CurrentTilt = 0;
-    private float TimeoutTime = 0;
+  /// <summary>Current applied tilt offset.</summary>
+  private float CurrentTilt = 0;
+
+  /// <summary>Remaining timeout (seconds) after combat ends.</summary>
+  private float TimeoutTime = 0;
 
     public static float InOutSine(float t) => (float)(Math.Cos(t * Math.PI) - 1) / -2;
 
@@ -64,16 +69,7 @@ namespace Tilted
 
     private void UpdateIsZoomed()
     {
-      var dist = TiltedHelper.GetActiveCameraDistance();
-
-      if (dist < configuration.ZoomedTriggerDistance)
-      {
-        ZoomedIn = true;
-      }
-      else
-      {
-        ZoomedIn = false;
-      }
+      ZoomedIn = TiltedHelper.GetActiveCameraDistance() < configuration.ZoomedTriggerDistance;
     }
 
     private void UpdateCombatTimeoutTimer(IFramework framework)
@@ -81,10 +77,13 @@ namespace Tilted
       if (InCombat)
       {
         TimeoutTime = configuration.CombatTimeoutSeconds;
+        return;
       }
-      else if (TimeoutTime > 0)
+
+      if (TimeoutTime > 0)
       {
-        TimeoutTime -= framework.UpdateDelta.Milliseconds / 1000f;
+        var deltaSeconds = framework.UpdateDelta.Milliseconds / 1000f;
+        TimeoutTime -= deltaSeconds;
       }
     }
 
@@ -111,27 +110,37 @@ namespace Tilted
         }
       }
 
+      var changed = false;
+
       if (configuration.EnableCameraTiltSmoothing)
       {
+        var delta = 0.05f * framework.UpdateDelta.Milliseconds;
+
         if (CurrentTilt > targetTilt)
         {
-
-          CurrentTilt = Math.Clamp(CurrentTilt - 0.05f * framework.UpdateDelta.Milliseconds, targetTilt, 100f);
-          TiltedHelper.SetTiltOffset(CurrentTilt);
+          var newTilt = Math.Clamp(CurrentTilt - delta, targetTilt, 100f);
+          changed = !newTilt.Equals(CurrentTilt);
+          CurrentTilt = newTilt;
         }
         else if (CurrentTilt < targetTilt)
         {
-          CurrentTilt = Math.Clamp(CurrentTilt + 0.05f * framework.UpdateDelta.Milliseconds, 0f, targetTilt);
-          TiltedHelper.SetTiltOffset(CurrentTilt);
+          var newTilt = Math.Clamp(CurrentTilt + delta, 0f, targetTilt);
+          changed = !newTilt.Equals(CurrentTilt);
+          CurrentTilt = newTilt;
         }
       }
       else
       {
-        if (CurrentTilt != targetTilt)
+        if (!CurrentTilt.Equals(targetTilt))
         {
           CurrentTilt = targetTilt;
-          TiltedHelper.SetTiltOffset(CurrentTilt);
+          changed = true;
         }
+      }
+
+      if (changed)
+      {
+        TiltedHelper.SetTiltOffset(CurrentTilt);
       }
     }
 
