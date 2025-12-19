@@ -1,6 +1,4 @@
-using System;
 using Dalamud.Game.Config;
-using Dalamud.Logging;
 using FFXIVClientStructs.FFXIV.Client.Game.Control;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 

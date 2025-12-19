@@ -1,8 +1,5 @@
 using System;
-using Dalamud.Game;
 using Dalamud.Game.ClientState.Conditions;
-using Dalamud.Game.ClientState.Objects.Types;
-using Dalamud.Logging;
 using Dalamud.Plugin.Services;
 
 namespace Tilted
