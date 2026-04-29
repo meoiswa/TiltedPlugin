@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel.Design;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Plugin.Services;
 
@@ -12,18 +13,19 @@ namespace Tilted
     private bool IsMounted => Service.Condition[ConditionFlag.Mounted];
     private bool InCombat => Service.Condition[ConditionFlag.InCombat];
     private bool BoundByDuty => Service.Condition[ConditionFlag.BoundByDuty] && !Service.Condition[ConditionFlag.BetweenAreas] && !Service.Condition[ConditionFlag.OccupiedInCutSceneEvent];
+    private bool OccupiedInCutSceneEvent => Service.Condition[ConditionFlag.OccupiedInCutSceneEvent];
 
-  /// <summary>Whether the camera is currently considered "zoomed in".</summary>
-  public bool ZoomedIn = false;
+    /// <summary>Whether the camera is currently considered "zoomed in".</summary>
+    public bool ZoomedIn = false;
 
-  /// <summary>Whether the tilting behaviour is currently enabled by triggers.</summary>
-  private bool IsEnabled = false;
+    /// <summary>Whether the tilting behaviour is currently enabled by triggers.</summary>
+    private bool IsEnabled = false;
 
-  /// <summary>Current applied tilt offset.</summary>
-  private float CurrentTilt = 0;
+    /// <summary>Current applied tilt offset.</summary>
+    private float CurrentTilt = 0;
 
-  /// <summary>Remaining timeout (seconds) after combat ends.</summary>
-  private float TimeoutTime = 0;
+    /// <summary>Remaining timeout (seconds) after combat ends.</summary>
+    private float TimeoutTime = 0;
 
     public static float InOutSine(float t) => (float)(Math.Cos(t * Math.PI) - 1) / -2;
 
@@ -42,6 +44,11 @@ namespace Tilted
       }
 
       if (FFXIVClientStructs.FFXIV.Client.Game.GameMain.IsInGPose() && !configuration.EnableInGpose)
+      {
+        return;
+      }
+
+      if (OccupiedInCutSceneEvent)
       {
         return;
       }
